@@ -30,25 +30,43 @@ MODULE_KO   := $(ROOTFS_DIR)/rtcore.ko
 KERNEL_IMG  := $(KERNEL_DIR)/arch/$(ARCH)/boot/Image
 BUSYBOX_BIN := $(ROOTFS_DIR)/bin/busybox
 
-.PHONY: all clean $(KERNEL_IMG) $(BUSYBOX_BIN) rtprog kernelmod userspace rootfs initramfs
+.PHONY: all clean rtprog kernelmod userspace rootfs initramfs run
 
-all: $(KERNEL_IMG) kernel_prepare $(BUSYBOX_BIN) rtprog kernelmod userspace rootfs initramfs
+all: $(KERNEL_IMG) $(BUSYBOX_BIN) rtprog kernelmod userspace rootfs initramfs
 
 # ---------------------------- KERNEL -----------------------------
 #KMAKE_FLAGS := V=1 -j1
 KMAKE_FLAGS := -j$$(nproc)
 #KMAKE_FLAGS := -j1
 
+#KERNEL_CONFIG := $(KERNEL_DIR)/.config
+
 $(KERNEL_DIR):
 	@echo " [*]	- cloning kernel"
 	git clone --depth=1 $(KERNEL_SRC) $@
 #	cd $@ && git checkout $(KERNEL_VERSION)
 
+#kernel_config: $(KERNEL_CONFIG) Makefile
+#	@echo " [*]	- configuring kernel"
+#	cd $(KERNEL_DIR) && \
+#		scripts/config --enable CONFIG_SERIAL_AMBA_PL011 && \
+#		scripts/config --enable CONFIG_SERIAL_AMBA_PL011_CONSOLE && \
+#		scripts/config --disable CONFIG_CPU_IDLE && \
+#		scripts/config --disable CONFIG_HOTPLUG_CPU
+
 kernel_prepare: $(KERNEL_DIR)
 	@echo " [*]	- preparing kernel"
 	cd $< && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS) defconfig
 	cd $< && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS) modules_prepare
-#	cd $< && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS) modules
+	cd $< && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS) modules
+
+#$(KERNEL_CONFIG): | $(KERNEL_DIR)
+#	cd $| && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) defconfig
+
+#$(KERNEL_IMG): kernel_config
+#	@echo " [*]	- building kernel"
+#	cd $(KERNEL_DIR) && \
+#		make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS)
 
 $(KERNEL_IMG): $(KERNEL_DIR) kernel_prepare
 	@echo " [*]	- building kernel"
@@ -121,7 +139,6 @@ initramfs: rootfs  $(BUSYBOX_BIN)
 # ---------------------------- RUN-QEMU  --------------------------
 run:
 	./run.sh $(JRT_MEM_PHYS) $(JRT_MEM_SIZE)
-
 
 clean:
 	$(call CLEAN_MOD,rtprog)

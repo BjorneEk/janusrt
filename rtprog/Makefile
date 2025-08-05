@@ -1,5 +1,7 @@
 # Author: Gustaf Franzen <gustaffranzen@icloud.com>
 
+include ../config.mk
+
 CROSS_COMPILE ?= aarch64-none-elf-
 
 ROOTFS_DIR ?= ../rootfs
@@ -19,7 +21,11 @@ CFLAGS +=		\
 	-Wall		\
 	-Werror		\
 	-O3		\
+	-DJRT_MEM_PHYS=$(JRT_MEM_PHYS) \
+	-DJRT_MEM_SIZE=$(JRT_MEM_SIZE) \
 	-I$(SHARED_DIR)
+
+JRT_MEM_HEX:=$(shell printf "0x%x" $(JRT_MEM_PHYS))
 
 .PHONY: clean debug
 
@@ -29,7 +35,7 @@ all: debug $(BIN)
 	$(CROSS_COMPILE)gcc -c $(CFLAGS) $@ $<
 
 $(GEN_LD): $(LDS)
-	sed 's/JRT_MEM_PHYS/$(JRT_MEM_PHYS)/g' $< > $@
+	sed 's/JRT_MEM_PHYS/$(JRT_MEM_HEX)/g' $< > $@
 
 $(ELF): $(OBJ) $(GEN_LD)
 	$(CROSS_COMPILE)ld -T $(GEN_LD) -o $@ $(OBJ)

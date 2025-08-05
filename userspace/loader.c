@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	}
 
 	memcpy(jrt_mem, prog, st.st_size);
-	munmap(file_data, st.st_size);
+	munmap(prog, st.st_size);
 	close(fd_in);
 
 	struct rtcore_start_args args = {

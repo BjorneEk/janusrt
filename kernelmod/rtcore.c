@@ -5,7 +5,7 @@
 
 #endif
 
-#include <stdint.h>
+#include <linux/types.h>
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/uaccess.h>
@@ -16,6 +16,8 @@
 #include <linux/mm.h>
 #include <linux/ioctl.h>
 #include <linux/platform_device.h>
+
+#include "psci.h"
 
 #define DEVICE_NAME "rtcore"
 #define RTCORE_IOCTL_START_CPU _IOW('r', 1, struct rtcore_start_args)
@@ -76,7 +78,7 @@ static int __init rtcore_init(void)
 	cdev_init(&rtcore_cdev, &rtcore_fops);
 	cdev_add(&rtcore_cdev, dev_num, 1);
 
-	rtcore_class = class_create(THIS_MODULE, DEVICE_NAME);
+	rtcore_class = class_create(DEVICE_NAME);
 	device_create(rtcore_class, NULL, dev_num, NULL, DEVICE_NAME);
 
 	jrt_mem_virt = memremap(JRT_MEM_PHYS, JRT_MEM_SIZE, MEMREMAP_WB);
@@ -102,5 +104,6 @@ static void __exit rtcore_exit(void)
 module_init(rtcore_init);
 module_exit(rtcore_exit);
 
-MODULE_AUTHOR("janusrt");
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Gustaf Franzen");
 MODULE_DESCRIPTION("RTCore CPU manager and memory sharer");

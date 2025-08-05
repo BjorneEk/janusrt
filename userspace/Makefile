@@ -1,5 +1,7 @@
 # Author: Gustaf Franzen <gustaffranzen@icloud.com>
 
+include ../config.mk
+
 CROSS_COMPILE ?= aarch64-linux-gnu-
 
 SHARED_DIR ?= ../shared
@@ -10,7 +12,11 @@ BIN := $(basename $(SRC))
 
 #BIN := $(addprefix $(ROOTFS_DIR)/bin/, $(basename $(SRC)))
 
-CFLAGS := -static -I$(SHARED_DIR)
+CFLAGS := \
+	-static \
+	-I$(SHARED_DIR) \
+	-DJRT_MEM_PHYS=$(JRT_MEM_PHYS) \
+	-DJRT_MEM_SIZE=$(JRT_MEM_SIZE)
 
 .PHONY: clean debug
 

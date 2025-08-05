@@ -8,7 +8,7 @@ SHARED_DIR    ?= ../shared
 ARCH          ?= arm64
 CROSS_COMPILE ?= aarch64-linux-gnu-
 
-obj-m := rtcore.o psci.o
+obj-m := rtcore.o psci.o psci_arm64.o
 
 ccflags-y += \
 	-I$(abspath $(SHARED_DIR)) \
