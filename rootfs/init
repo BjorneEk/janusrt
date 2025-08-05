@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Author: Gustaf Franzen <gustaffranzen@icloud.com>
+
+mount -t proc none /proc
+mount -t sysfs none /sys
+
+echo "[init] Booted Linux" > /dev/ttyAMA1
+
+insmod /rtcore.ko
+#./loader &
+#./checker
+exec /bin/sh
