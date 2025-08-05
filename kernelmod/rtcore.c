@@ -1,96 +1,106 @@
 /**
  * Author: Gustaf Franzen <gustaffranzen@icloud.com>
  */
-#include <linux/fs.h>
-#include <linux/init.h>
+#if defined(__clang__)
+
+#endif
+
+#include <stdint.h>
 #include <linux/module.h>
+#include <linux/fs.h>
 #include <linux/uaccess.h>
+#include <linux/io.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
-#include <linux/cpu.h>
-#include <linux/smp.h>
+#include <linux/slab.h>
+#include <linux/mm.h>
 #include <linux/ioctl.h>
-
-#include "mailbox.h"
+#include <linux/platform_device.h>
 
 #define DEVICE_NAME "rtcore"
-#define CLASS_NAME "rtcore_class"
+#define RTCORE_IOCTL_START_CPU _IOW('r', 1, struct rtcore_start_args)
 
-static dev_t devnum;
+struct rtcore_start_args {
+	uint64_t entry_phys;
+	uint64_t core_id;
+};
+
+static dev_t dev_num;
 static struct class *rtcore_class;
 static struct cdev rtcore_cdev;
+static void __iomem *jrt_mem_virt;
 
-static unsigned long *pen_release = ((volatile void*)0xFFFF00000900FFF8);
+extern void psci_cpu_on(uint64_t core_id, uint64_t entry, uint64_t context);
 
 static long rtcore_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	struct rtcore_boot boot;
+	struct rtcore_start_args args;
 
-	if (cmd != RTCORE_BOOT)
-		return -EINVAL;
+	if (cmd != RTCORE_IOCTL_START_CPU)
+		return -ENOTTY;
 
-	if (copy_from_user(&boot, (void __user*)arg, sizeof(boot)))
-		return -EINVAL;
+	if (copy_from_user(&args, (void __user *)arg, sizeof(args)))
+		return -EFAULT;
 
-	if (boot.core_id >= nr_cpu_ids)
-		return -EINVAL;
-
-	pr_info("rtcore: booting core %u to 0x%llx\n", boot.core_id, boot.entrypoint);
-	*pen_release = boot.entrypoint;
-	smp_wmb();
-
-	if (cpu_up(boot.core_id))
-		return -EIO;
+	psci_cpu_on(args.core_id, args.entry_phys, 0);
 
 	return 0;
+}
+
+static int rtcore_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+	unsigned long size;
+
+	size = vma->vm_end - vma->vm_start;
+
+	if (size > JRT_MEM_SIZE)
+		return -EINVAL;
+
+	return remap_pfn_range(
+		vma,
+		vma->vm_start,
+		JRT_MEM_PHYS >> PAGE_SHIFT,
+		size,
+		vma->vm_page_prot);
 }
 
 static const struct file_operations rtcore_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = rtcore_ioctl,
+	.mmap = rtcore_mmap,
 };
 
 static int __init rtcore_init(void)
 {
-	int ret;
-
-	ret = alloc_chrdev_region(&devnum, 0, 1, DEVICE_NAME);
-
-	if (ret)
-		return ret;
-
+	alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME);
 	cdev_init(&rtcore_cdev, &rtcore_fops);
-	rtcore_cdev.owner = THIS_MODULE;
-	ret = cdev_add(&rtcore_cdev, devnum, 1);
+	cdev_add(&rtcore_cdev, dev_num, 1);
 
-	if (ret)
-		goto unreg;
-	rtcore_class = class_create(CLASS_NAME);
-//	rtcore_class = class_create(THIS_MODULE, CLASS_NAME);
+	rtcore_class = class_create(THIS_MODULE, DEVICE_NAME);
+	device_create(rtcore_class, NULL, dev_num, NULL, DEVICE_NAME);
 
-	if (IS_ERR(rtcore_class)) {
-		ret = PTR_ERR(rtcore_class);
-		goto del;
+	jrt_mem_virt = memremap(JRT_MEM_PHYS, JRT_MEM_SIZE, MEMREMAP_WB);
+	if (!jrt_mem_virt) {
+		pr_err("rtcore: failed to map JRT memory\n");
+		return -ENOMEM;
 	}
 
-	device_create(rtcore_class, NULL, devnum, NULL, DEVICE_NAME);
-	pr_info("rtcore: module loaded, major=%d\n", MAJOR(devnum));
+	pr_info("rtcore: module loaded\n");
 	return 0;
-del:
-	cdev_del(&rtcore_cdev);
-unreg:
-	unregister_chrdev_region(devnum, 1);
-	return ret;
 }
 
 static void __exit rtcore_exit(void)
 {
-	device_destroy(rtcore_class, devnum);
+	memunmap(jrt_mem_virt);
+	device_destroy(rtcore_class, dev_num);
 	class_destroy(rtcore_class);
 	cdev_del(&rtcore_cdev);
-	unregister_chdev_region(devnum, 1);
+	unregister_chrdev_region(dev_num, 1);
 	pr_info("rtcore: module unloaded\n");
 }
 
 module_init(rtcore_init);
 module_exit(rtcore_exit);
+
+MODULE_AUTHOR("janusrt");
+MODULE_DESCRIPTION("RTCore CPU manager and memory sharer");

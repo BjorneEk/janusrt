@@ -4,6 +4,8 @@ busybox/
 rootfs/*
 !rootfs/init
 
+rtprog/gen.ld
+
 # --- Build artifacts ---
 *.o
 *.ko
@@ -38,3 +40,4 @@ initramfs.cpio
 *.log
 *.bak
 *.tmp
+*.zip

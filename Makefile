@@ -1,5 +1,7 @@
 # Author: Gustaf Franzen <gustaffranzen@icloud.com>
 
+include config.mk
+
 CROSS    := aarch64-linux-gnu-
 RT_CROSS := aarch64-none-elf-
 ARCH     := arm64
@@ -115,6 +117,11 @@ rootfs: rtprog userspace kernelmod
 initramfs: rootfs  $(BUSYBOX_BIN)
 	@echo " [*]	- creating initramfs"
 	cd $(ROOTFS_DIR) && find . | cpio -H newc -o > ../$(INITRAMFS)
+
+# ---------------------------- RUN-QEMU  --------------------------
+run:
+	./run.sh $(JRT_MEM_PHYS) $(JRT_MEM_SIZE)
+
 
 clean:
 	$(call CLEAN_MOD,rtprog)

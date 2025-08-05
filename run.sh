@@ -11,11 +11,25 @@ QEMU=qemu-system-aarch64
 
 KERNEL="kernel/arch/$ARCH/boot/Image"
 INITRAMFS='initramfs.cpio'
+#KERNEL_CMDLINE='console=ttyAMA0 isolcpus=3 nohz_full=3 rcu_nocbs=3 rdinit=/init'
+KERNEL_CMDLINE='console=ttyAMA0 root=/dev/ram rw isolcpus=3 nohz_full=3 rcu_nocbs=3'
+NCPUS='4'
+MEM='2048'
+MACH='virt,gic-version=3'
+CPU='cortex-a72'
+
+JRT_OUT='jrt-log'
+JRT_MEM="$1"
 
 $QEMU \
-	-M virt -cpu cortex-a57 -smp 4 -m 1024 \
-	-kernel $KERNEL \
-	-initrd $INITRAMFS \
+	-serial mon:stdio \
+	-serial "file:$JRT_OUT" \
+	-M      "$MACH" \
+	-cpu    "$CPU" \
+	-smp    "$NCPUS" \
+	-m      "$MEM" \
+	-kernel "$KERNEL" \
+	-initrd "$INITRAMFS" \
 	-nographic \
-	-append "console=ttyAMA0,115200 rdinit=/init"
+	-append "$KERNEL_CMDLINE"
 

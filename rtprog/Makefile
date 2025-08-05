@@ -11,6 +11,8 @@ ELF := $(patsubst %.c,%.elf,$(SRC))
 BIN := $(ROOTFS_DIR)/rt.bin
 LDS := linker.ld
 
+GEN_LD := gen.ld
+
 CFLAGS +=		\
 	-nostdlib	\
 	-ffreestanding	\
@@ -26,8 +28,11 @@ all: debug $(BIN)
 %.o: %.c
 	$(CROSS_COMPILE)gcc -c $(CFLAGS) $@ $<
 
-$(ELF): $(OBJ)
-	$(CROSS_COMPILE)ld -T $(LDS) -o $@ $^
+$(GEN_LD): $(LDS)
+	sed 's/JRT_MEM_PHYS/$(JRT_MEM_PHYS)/g' $< > $@
+
+$(ELF): $(OBJ) $(GEN_LD)
+	$(CROSS_COMPILE)ld -T $(GEN_LD) -o $@ $(OBJ)
 
 $(BIN): $(ELF)
 	$(CROSS_COMPILE)objcopy -O binary $< $@
@@ -38,7 +43,10 @@ debug:
 	@echo "ELF: $(ELF)"
 	@echo "BIN: $(BIN)"
 	@echo "LDS: $(LDS)"
+	@echo "GEN_LD: $(GEN_LD)"
 	@echo "CFLAGS	$(CFLAGS)"
-	
+
 clean:
+	$(RM) -f $(GEN_LD)
 	$(RM) -f *.o *.elf $(BIN)
+

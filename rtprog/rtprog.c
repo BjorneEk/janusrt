@@ -5,20 +5,24 @@
 #include <stdint.h>
 #include "mailbox.h"
 
-#define UART_BASE	(0x09000000UL)
-#define UART_PTR(_off)	((volatile uint32_t *)(UART_BASE + (_off)))
-#define UART_DR		UART_PTR(0x00)
-#define UART_FR		UART_PTR(0x18)
-#define FR_TXFF		(1 << 5)
+#define UART_BASE	(0x09010000)
+#define UART_TXFIFO	(UART_BASE + 0x00)
+#define UART_FR		(UART_BASE + 0x18)
 
-__attribute__((section(".bss.mailbox")))
-struct mailbox mbox;
+#define UART_FR_TXFF	(1 << 5)
 
 static void uart_putc(char c)
 {
-	while ((*UART_FR) & FR_TXFF)
+	volatile uint32_t *fr;
+	volatile uint32_t *tx;
+
+	fr = (uint32_t *)UART_FR;
+	tx = (uint32_t *)UART_TXFIFO;
+
+	while (*fr & UART_FR_TXFF)
 		;
-	*UART_DR = c;
+
+	*tx = c;
 }
 
 static void uart_puts(char *s)
@@ -49,6 +53,18 @@ static void uart_putu32(uint32_t v)
 
 void _start(void)
 {
+	uart_puts("a number: ");
+	uart_putu32(69);
+	uart_puts("\n");
+
+	while (1)
+		uart_puts("[jrt] Hello from JRT!\n");
+}
+/*
+__attribute__((section(".bss.mailbox")))
+struct mailbox mbox;
+void _start(void)
+{
 	uint32_t i, j;
 	mbox.counter = 0;
 	mbox.last_value = 42;
@@ -66,3 +82,4 @@ void _start(void)
 		uart_putc('\n');
 	}
 }
+*/

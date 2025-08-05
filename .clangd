@@ -1,0 +1,35 @@
+CompileFlags:
+  Add:
+    - -isystem
+    - /Volumes/devdisk/janusrt/kernel/include
+    - -isystem
+    - /Volumes/devdisk/janusrt/kernel/arch/arm64/include
+    - -isystem
+    - /Volumes/devdisk/janusrt/kernel/include/uapi
+    - -isystem
+    - /Volumes/devdisk/janusrt/kernel/arch/arm64/include/uapi
+    - -isystem
+    - /Volumes/devdisk/janusrt/kernel/arch/arm64/include/generated
+    - -isystem
+    - /Volumes/devdisk/janusrt/kernel/arch/arm64/include/generated/uapi
+    - -isystem
+    - /Volumes/devdisk/janusrt/kernel/include/generated
+    - -isystem
+    - /Volumes/devdisk/janusrt/kernel/include/generated/uapi
+    - -isystem
+    - /Volumes/devdisk/janusrt/kernel/include/asm-generic
+    - -DJRT_MEM_SIZE=0x1000
+    - -DJRT_MEM_PHYS=0x40000000
+#    - -DEINVAL=22
+    - -target
+    - aarch64-linux-gnu
+    - -D__KERNEL__
+    - -DKBUILD_MODNAME="\"rtcore\""
+    - -DMODULE
+    - -Wno-gnu
+    - -Wno-error
+    - -Wno-unused-command-line-argument
+    - -mabi=lp64
+    - -nostdinc
+    - -include
+    - asm/types.h

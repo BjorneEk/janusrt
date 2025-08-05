@@ -1,12 +1,10 @@
 ENTRY(_start)
 
-SECTIONS
-{
-	. = 0x90000000;
+SECTIONS {
+	. = JRT_MEM_PHYS;
 
 	.text : {
-		KEEP(*(.text.boot))
-		*(.text*)
+		KEEP(*(.text*))
 	}
 
 	.rodata : {
@@ -20,13 +18,8 @@ SECTIONS
 	.bss : {
 		__bss_start = .;
 		*(.bss*)
-		*(COMMON)
-		*(.bss.mailbox*)
 		__bss_end = .;
 	}
 
-	/DISCARD/ : {
-		*(.comment)
-		*(.note*)
-	}
+	_end = .;
 }

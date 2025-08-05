@@ -1,86 +1,100 @@
 /**
+ *
+ * loader.c - Loads a bare-metal program into reserved memory and starts a core using rtcore ioctl
+ *
  * Author Gustaf Franzen <gustaffranzen@icloud.com>
+ *
  */
 
 #include <stdio.h>
-#include <stdint.h>
+#include <stdlib.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <sys/ioctl.h>
 #include <string.h>
-#include "mailbox.h"
+#include <errno.h>
 
-#define RT_ADDR	(0x90000000UL)
-#define RT_SIZE	(0x10000)
-#define RTCORE_DEV	"/dev/rtcore"
+#include "../shared/mailbox.h"
+
+#define RTCORE_IOCTL_START_CPU _IOW('r', 1, struct rtcore_start_args)
+
+struct rtcore_start_args {
+	uint64_t entry_phys;
+	uint64_t core_id;
+};
 
 int main(int argc, char *argv[])
 {
-	int fd_bin;
-	void *mem;
-	size_t n;
-	struct rtcore_boot boot;
-	int fd_rtcore;
-	struct mailbox *mbox;
+	int fd, fd_in;
+	void *jrt_mem, *prog;
+	struct stat st;
 
 	if (argc < 2) {
-		printf("usage %s <prog.bin>\n", argv[0]);
-		return -1;
-	}
-
-	fd_bin = open(argv[1], O_RDONLY);
-
-	if (fd_bin < 0) {
-		perror("opening file");
+		fprintf(stderr, "Usage: %s <rtprog.elf>\n", argv[0]);
 		return 1;
 	}
 
-	mem = mmap(
-		(void*)RT_ADDR,
-		RT_SIZE,
-		PROT_READ | PROT_WRITE | PROT_EXEC,
-		MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED,
-		-1,
+	fd = open("/dev/rtcore", O_RDWR);
+	if (fd < 0) {
+		perror("open /dev/rtcore");
+		return 1;
+	}
+
+	jrt_mem = mmap(
+		NULL,
+		JRT_MEM_SIZE,
+		PROT_READ | PROT_WRITE,
+		MAP_SHARED,
+		fd,
 		0);
-
-	if (mem == MAP_FAILED) {
-		perror("allocating memory");
-		return -1;
+	if (jrt_mem == MAP_FAILED) {
+		perror("mmap");
+		close(fd);
+		return 1;
 	}
 
-	if (mlock(mem, RT_SIZE) != 0) {
-		perror("failed to lock memory region");
-		return -1;
+	fd_in = open(argv[1], O_RDONLY);
+	if (fd_in < 0) {
+		perror("open <program>.bin");
+		return 1;
 	}
 
-	n = read(fd_bin, mem, RT_SIZE);
-
-	if (n < 0) {
-		perror("reading file");
-		return -1;
+	if (fstat(fd_in, &st) < 0) {
+		perror("fstat");
+		close(fd_in);
+		return 1;
 	}
-	close(fd_bin);
 
-	boot = (struct rtcore_boot){
-		.core_id = 3,
-		.entrypoint = RT_ADDR,
+	if (st.st_size > JRT_MEM_SIZE) {
+		fprintf(stderr, "<program>.bin too big\n");
+		close(fd_in);
+		return 1;
+	}
+
+	prog = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd_in, 0);
+	if (prog == MAP_FAILED) {
+		perror("mmap file");
+		close(fd_in);
+		return 1;
+	}
+
+	memcpy(jrt_mem, prog, st.st_size);
+	munmap(file_data, st.st_size);
+	close(fd_in);
+
+	struct rtcore_start_args args = {
+		.entry_phys = JRT_MEM_PHYS,
+		.core_id = 3
 	};
 
-	fd_rtcore = open(RTCORE_DEV, O_RDWR);
-
-	if (fd_rtcore < 0) {
-		perror("open /dev/rtcore");
-		return -1;
+	if (ioctl(fd, RTCORE_IOCTL_START_CPU, &args) < 0) {
+		perror("ioctl cpu_on");
+		return 1;
 	}
 
-	if (ioctl(fd_rtcore, RTCORE_BOOT, &boot) != 0) {
-		perror("ioctl RTCORE_BOOT");
-		return -1;
-	}
-
-	printf("Core %u started at 0x%lx press char to release memory\n", boot.core_id, boot.entrypoint);
-	getchar();
+	printf("Started CPU 3 at 0x%lx\n", args.entry_phys);
 	return 0;
-	//mbox = (struct mailbox*)(RT_ADDR + RT_SIZE - sizeof(struct mailbox));
 }
