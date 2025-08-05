@@ -1,0 +1,40 @@
+kernel/
+busybox/
+
+rootfs/*
+!rootfs/init
+
+# --- Build artifacts ---
+*.o
+*.ko
+*.elf
+*.bin
+*.map
+*.mod
+*.mod.c
+*.symvers
+*.order
+*.d
+*.cmd
+
+# --- Output files ---
+initramfs.cpio
+*.img
+*.gz
+*.xz
+*.lzma
+
+# --- Editor & OS files ---
+*~
+*.swp
+.DS_Store
+.vscode/
+
+# --- Docker build layers (optional) ---
+*.tar
+*.squashfs
+
+# --- Logs & misc ---
+*.log
+*.bak
+*.tmp
