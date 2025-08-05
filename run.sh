@@ -23,7 +23,7 @@ MEM='2048'
 MACH='virt,gic-version=3'
 CPU='cortex-a72'
 
-JRT_OUT='jrt-log'
+JRT_OUT='jrt.log'
 
 $QEMU \
 	-serial mon:stdio \

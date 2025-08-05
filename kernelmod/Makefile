@@ -8,7 +8,9 @@ SHARED_DIR    ?= ../shared
 ARCH          ?= arm64
 CROSS_COMPILE ?= aarch64-linux-gnu-
 
-obj-m := rtcore.o psci.o psci_arm64.o
+obj-m := rtcore.o
+
+rtcore-objs := rtmain.o psci.o psci_arm64.o
 
 ccflags-y += \
 	-I$(abspath $(SHARED_DIR)) \
@@ -26,6 +28,6 @@ clean:
 	$(MAKE) -C $(KERNEL_DIR) \
 		ARCH=$(ARCH) \
 		CROSS_COMPILE=$(CROSS_COMPILE) \
-		M=$(PWD) \
+		M=$(shell pwd) \
 		clean
 

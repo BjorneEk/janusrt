@@ -3,12 +3,18 @@
 	.global psci_cpu_on_arm64
 	.type psci_cpu_on_arm64, %function
 
+// x0: core_id
+// x1: entry
+// x2: context
 psci_cpu_on_arm64:
-	ldr	x0, =0x84000003		// PSCI_CPU_ON
+	// load 0x84000003, (PSCI_CPU_ON)
+	movz	x0, #0x0003
+	movk	x0, #0x8400, lsl #16
 	mov	x3, x2			// context
 	mov	x2, x1			// entry
 	mov	x1, x0			// core_id
-	ldr	x0, =0x84000003
+	movz	x0, #0x0003
+	movk	x0, #0x8400, lsl #16
 	smc	#0
 	ret
 

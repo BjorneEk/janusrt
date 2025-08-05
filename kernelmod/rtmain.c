@@ -32,8 +32,6 @@ static struct class *rtcore_class;
 static struct cdev rtcore_cdev;
 static void __iomem *jrt_mem_virt;
 
-extern void psci_cpu_on(uint64_t core_id, uint64_t entry, uint64_t context);
-
 static long rtcore_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct rtcore_start_args args;
@@ -86,7 +84,7 @@ static int __init rtcore_init(void)
 		pr_err("rtcore: failed to map JRT memory\n");
 		return -ENOMEM;
 	}
-
+	pr_info("rtcore: registered with major %d\n", MAJOR(dev_num));
 	pr_info("rtcore: module loaded\n");
 	return 0;
 }

@@ -39,20 +39,11 @@ all: $(KERNEL_IMG) $(BUSYBOX_BIN) rtprog kernelmod userspace rootfs initramfs
 KMAKE_FLAGS := -j$$(nproc)
 #KMAKE_FLAGS := -j1
 
-#KERNEL_CONFIG := $(KERNEL_DIR)/.config
 
 $(KERNEL_DIR):
 	@echo " [*]	- cloning kernel"
 	git clone --depth=1 $(KERNEL_SRC) $@
 #	cd $@ && git checkout $(KERNEL_VERSION)
-
-#kernel_config: $(KERNEL_CONFIG) Makefile
-#	@echo " [*]	- configuring kernel"
-#	cd $(KERNEL_DIR) && \
-#		scripts/config --enable CONFIG_SERIAL_AMBA_PL011 && \
-#		scripts/config --enable CONFIG_SERIAL_AMBA_PL011_CONSOLE && \
-#		scripts/config --disable CONFIG_CPU_IDLE && \
-#		scripts/config --disable CONFIG_HOTPLUG_CPU
 
 kernel_prepare: $(KERNEL_DIR)
 	@echo " [*]	- preparing kernel"
@@ -60,24 +51,18 @@ kernel_prepare: $(KERNEL_DIR)
 	cd $< && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS) modules_prepare
 	cd $< && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS) modules
 
-#$(KERNEL_CONFIG): | $(KERNEL_DIR)
-#	cd $| && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) defconfig
-
-#$(KERNEL_IMG): kernel_config
-#	@echo " [*]	- building kernel"
-#	cd $(KERNEL_DIR) && \
-#		make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS)
-
-$(KERNEL_IMG): $(KERNEL_DIR) kernel_prepare
-	@echo " [*]	- building kernel"
+kernel_config: $(KERNEL_DIR) kernel_prepare
+	@echo " [*]	- configuring kernel"
 	cd $< && \
 		scripts/config --enable CONFIG_SERIAL_AMBA_PL011 && \
 		scripts/config --enable CONFIG_SERIAL_AMBA_PL011_CONSOLE && \
 		scripts/config --disable CONFIG_CPU_IDLE && \
-		scripts/config --disable CONFIG_HOTPLUG_CPU && \
-		make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS)
+		scripts/config --disable CONFIG_HOTPLUG_CPU
 
-#	scripts/config --set-str INITRAMFS_SOURCE "../$(INITRAMFS)" && \
+$(KERNEL_IMG): $(KERNEL_DIR)
+	@echo " [*]	- building kernel"
+	cd $< && \
+		make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS)
 
 # ---------------------------- BUSYBOX ----------------------------
 $(BUSYBOX_DIR):
