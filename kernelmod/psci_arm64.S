@@ -10,9 +10,10 @@ psci_cpu_on_arm64:
 	mov	x3, x2			// context
 	mov	x2, x1			// entry
 	mov	x1, x0			// core_id
-	// load 0x84000003, (PSCI_CPU_ON)
+	// load 0x84000003, (PSCI_CPU_OFF)
+	// load 0xc4000003, (PSCI_CPU_ON)
 	movz	x0, #0x0003
-	movk	x0, #0x8400, lsl #16
+	movk	x0, #0xc400, lsl #16
 	smc	#0
 	ret
 

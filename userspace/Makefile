@@ -1,33 +1,30 @@
 # Author: Gustaf Franzen <gustaffranzen@icloud.com>
 
-include ../config.mk
+#include ../config.mk
 
-CROSS_COMPILE ?= aarch64-linux-gnu-
-
-SHARED_DIR ?= ../shared
-ROOTFS_DIR ?= ../rootfs
+CC:=$(LINUX_CROSS)gcc
 
 SRC := $(wildcard *.c)
-BIN := $(basename $(SRC))
+PROG := loader
 
-#BIN := $(addprefix $(ROOTFS_DIR)/bin/, $(basename $(SRC)))
-
-CFLAGS := \
-	-static \
-	-I$(SHARED_DIR) \
-	-DJRT_MEM_PHYS=$(JRT_MEM_PHYS) \
-	-DJRT_MEM_SIZE=$(JRT_MEM_SIZE)
+CFLAGS :=			\
+	-static			\
+	-I$(SHARED_DIR)		\
+	$(COMMON_CFLAGS)
 
 .PHONY: clean debug
 
-all: debug $(BIN)
+all: debug $(LOADER_BIN)
 
-$(ROOTFS_DIR)/bin/%: %.c $(SHARED_DEPS)
-	$(CROSS_COMPILE)gcc $(CFLAGS) -o $@ $<
+%: %.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(LOADER_BIN): $(PROG)
+	@cp $< $@
 
 debug:
 	@echo "SRC: $(SRC)"
-	@echo "BIN: $(BIN)"
+	@echo "PROG: $(prog)"
 	@echo "CFLAGS: $(CFLAGS)"
 
 clean:

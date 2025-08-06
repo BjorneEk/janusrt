@@ -4,7 +4,8 @@ SECTIONS {
 	. = JRT_MEM_PHYS;
 
 	.text : {
-		KEEP(*(.text*))
+		KEEP(*(.text._start))
+		*(.text*)
 	}
 
 	.rodata : {

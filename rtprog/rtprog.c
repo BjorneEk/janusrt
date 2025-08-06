@@ -52,7 +52,7 @@ __attribute__((unused)) static void uart_putu32(uint32_t v)
 	uart_puts(&buf[i+1]);
 }
 
-void _start(void)
+void jrt_main(void)
 {
 //	uart_puts("a number: ");
 //	uart_putu32(69);

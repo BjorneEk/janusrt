@@ -24,7 +24,7 @@ NCPUS='4'
 MEM='4096'
 MACH='virt,gic-version=3,secure=on'
 CPU='cortex-a72'
-
+DTB='qemu.dtb'
 JRT_OUT='jrt.log'
 JRT_OUT2='jrt2.log'
 #-icount shift=7,align=on,sleep=on \
@@ -32,7 +32,7 @@ $QEMU \
 	-serial mon:stdio \
 	-serial "file:$JRT_OUT" \
 	-serial "file:$JRT_OUT2" \
-	-d guest_errors,unimp,exec \
+	-dtb	"$DTB" \
 	-M      "$MACH" \
 	-cpu    "$CPU" \
 	-smp    "$NCPUS",threads="$NCPUS" \
@@ -40,7 +40,6 @@ $QEMU \
 	-kernel "$KERNEL" \
 	-initrd "$INITRAMFS" \
 	-append "$KERNEL_CMDLINE" \
-	-icount shift=7,align=on,sleep=on
-
-#	-nographic
-
+	-nographic
+#-icount shift=7,align=on,sleep=on \
+#-d guest_errors,unimp,exec \

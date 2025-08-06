@@ -1,33 +1,34 @@
 # Author: Gustaf Franzen <gustaffranzen@icloud.com>
 
-include ../config.mk
+#include ../config.mk
 
-ROOTFS_DIR    ?= ../rootfs
-KERNEL_DIR    ?= ../kernel
-SHARED_DIR    ?= ../shared
-ARCH          ?= arm64
-CROSS_COMPILE ?= aarch64-linux-gnu-
+#ROOTFS_DIR    ?= ../rootfs
+#KERNEL_DIR    ?= ../kernel
+#SHARED_DIR    ?= ../shared
+#ARCH          ?= arm64
+#CROSS_COMPILE ?= aarch64-linux-gnu-
 
-obj-m := rtcore.o
-
+MOD         := rtcore.ko
+obj-m       := rtcore.o
 rtcore-objs := rtmain.o psci.o psci_arm64.o
 
 ccflags-y += \
 	-I$(abspath $(SHARED_DIR)) \
-	-DJRT_MEM_PHYS=$(JRT_MEM_PHYS) \
-	-DJRT_MEM_SIZE=$(JRT_MEM_SIZE)
+	$(COMMON_CFLAGS)
 
-all:
-	$(MAKE) -C $(KERNEL_DIR) \
-		ARCH=$(ARCH) \
-		CROSS_COMPILE=$(CROSS_COMPILE) \
-		M=$(shell pwd) \
-		modules
+KMAKE_FLAGS := \
+	ARCH=$(ARCH) \
+	CROSS_COMPILE=$(LINUX_CROSS) \
+	M=$(shell pwd)
+
+all: $(MODULE_KO)
+
+$(MOD):
+	$(MAKE) -C $(KERNEL_DIR) $(KMAKE_FLAGS) modules
+
+$(MODULE_KO): $(MOD)	
+	@cp $< $@
 
 clean:
-	$(MAKE) -C $(KERNEL_DIR) \
-		ARCH=$(ARCH) \
-		CROSS_COMPILE=$(CROSS_COMPILE) \
-		M=$(shell pwd) \
-		clean
+	$(MAKE) -C $(KERNEL_DIR) $(KMAKE_FLAGS) clean
 

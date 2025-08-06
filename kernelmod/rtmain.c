@@ -48,6 +48,12 @@ static long rtcore_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return -EFAULT;
 	}
 
+
+
+//	__flush_dcache_area(jrt_mem_virt, JRT_MEM_SIZE);
+//	flush_icache_range((unsigned long)jrt_mem_virt,
+//		(unsigned long)jrt_mem_virt + JRT_MEM_SIZE);
+
 	pr_info("rtcore: starting CPU: %llu at 0x%llx\n", args.core_id, args.entry_phys);
 	res = psci_cpu_on(args.core_id, args.entry_phys, 0);
 	pr_info("rtcore: psci_cpu_on returned: %d\n", res);
