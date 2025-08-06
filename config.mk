@@ -6,6 +6,7 @@ JRT_MEM_SIZE:=0x01000000
 LINUX_CROSS := aarch64-linux-gnu-
 NONE_CROSS  := aarch64-none-elf-
 ARCH        := arm64
+TARGET      := qemu
 
 # Paths
 KERNEL_DIR  := $(abspath kernel)
@@ -15,6 +16,7 @@ ROOTFS_DIR  := $(abspath rootfs)
 SHARED_DIR  := $(abspath shared)
 USPACE_DIR  := $(abspath userspace)
 KMOD_DIR    := $(abspath kernelmod)
+DEVTREE_DIR := $(abspath devtree)
 
 # Artifacts
 RT_BIN      := $(abspath $(ROOTFS_DIR)/rt.bin)
@@ -23,6 +25,8 @@ CHECKER_BIN := $(abspath $(ROOTFS_DIR)/checker)
 MODULE_KO   := $(abspath $(ROOTFS_DIR)/rtcore.ko)
 KERNEL_IMG  := $(abspath $(KERNEL_DIR)/arch/$(ARCH)/boot/Image)
 BUSYBOX_BIN := $(abspath $(ROOTFS_DIR)/bin/busybox)
+
+DEVTREE_BLOB := $(DEVTREE_DIR)/$(TARGET).dtb
 
 COMMON_CFLAGS:= \
 	-DJRT_MEM_PHYS=$(JRT_MEM_PHYS) \

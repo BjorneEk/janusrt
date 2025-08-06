@@ -24,7 +24,7 @@ NCPUS='4'
 MEM='4096'
 MACH='virt,gic-version=3,secure=on'
 CPU='cortex-a72'
-DTB='qemu.dtb'
+DTB="$3"
 JRT_OUT='jrt.log'
 JRT_OUT2='jrt2.log'
 #-icount shift=7,align=on,sleep=on \

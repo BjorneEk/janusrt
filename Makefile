@@ -138,11 +138,18 @@ initramfs: rtprog userspace kernelmod rootfs $(BUSYBOX_BIN)
 	@echo " [*]	- creating initramfs"
 	cd $(ROOTFS_DIR) && find . | cpio -H newc -o > $(INITRAMFS)
 
+%.dtb: %.dts
+	@echo " [*]	- compiling device tree blob ($@)"
+	dtc -I dts -O dtb -o $@ $<
+
+compile: $(KERNEL_BIN) initramfs $(DEVTREE_BLOB)
+
 # ---------------------------- RUN-QEMU  --------------------------
 run:
-	./run.sh $(JRT_MEM_PHYS) $(JRT_MEM_SIZE)
+	./run.sh $(JRT_MEM_PHYS) $(JRT_MEM_SIZE) $(DEVTREE_BLOB)
 
 clean:
+	$(RM) -rf $(DEVTREE_BLOB)
 	cd $(BUSYBOX_DIR) && make distclean || true
 	$(MAKE) -C kernelmod clean
 	$(RM) -rf $(RT_BIN) $(LOADER_BIN) $(CHECKER_BIN) $(MODULE_KO) $(INITRAMFS)

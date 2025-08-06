@@ -18,6 +18,7 @@ rtprog/gen.ld
 *.order
 *.d
 *.cmd
+*.dtb
 userspace/loader
 
 # --- Output files ---
