@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
 		.core_id = 3
 	};
 
+	printf("Starting CPU 3 at 0x%lx...\n", args.entry_phys);
 	if (ioctl(fd, RTCORE_IOCTL_START_CPU, &args) < 0) {
 		perror("ioctl cpu_on");
 		return 1;

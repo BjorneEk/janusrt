@@ -35,33 +35,57 @@ static void __iomem *jrt_mem_virt;
 static long rtcore_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct rtcore_start_args args;
+	int res;
 
-	if (cmd != RTCORE_IOCTL_START_CPU)
+	if (cmd != RTCORE_IOCTL_START_CPU) {
+		pr_info("rtcore: cmd != RTCORE_IOCTL_START_CPU\n");
 		return -ENOTTY;
+	}
 
-	if (copy_from_user(&args, (void __user *)arg, sizeof(args)))
+	if (copy_from_user(&args, (void __user *)arg, sizeof(args))) {
+
+		pr_info("rtcore: failed to copy args from user\n");
 		return -EFAULT;
+	}
 
-	psci_cpu_on(args.core_id, args.entry_phys, 0);
-
+	pr_info("rtcore: starting CPU: %llu at 0x%llx\n", args.core_id, args.entry_phys);
+	res = psci_cpu_on(args.core_id, args.entry_phys, 0);
+	pr_info("rtcore: psci_cpu_on returned: %d\n", res);
 	return 0;
 }
 
 static int rtcore_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	unsigned long size;
+	int res;
 
 	size = vma->vm_end - vma->vm_start;
 
-	if (size > JRT_MEM_SIZE)
-		return -EINVAL;
+	pr_info("rtcore: mmap request %lx bytes at user addr %lx\n", size, vma->vm_start);
+	pr_info("rtcore: remapping phys %lx\n", (unsigned long)JRT_MEM_PHYS);
 
-	return remap_pfn_range(
+	if (size > JRT_MEM_SIZE) {
+		pr_err("rtcore: mmap size too large\n");
+		return -EINVAL;
+	}
+
+	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+
+	res = remap_pfn_range(
 		vma,
 		vma->vm_start,
 		JRT_MEM_PHYS >> PAGE_SHIFT,
 		size,
 		vma->vm_page_prot);
+
+	if (res) {
+		pr_err("rtcore: remap_pfn_range failed!\n");
+		return -EAGAIN;
+	}
+
+	pr_info("rtcore: mmap successful\n");
+
+	return 0;
 }
 
 static const struct file_operations rtcore_fops = {

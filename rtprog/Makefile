@@ -32,7 +32,7 @@ JRT_MEM_HEX:=$(shell printf "0x%x" $(JRT_MEM_PHYS))
 all: debug $(BIN)
 
 %.o: %.c
-	$(CROSS_COMPILE)gcc -c $(CFLAGS) $@ $<
+	$(CROSS_COMPILE)gcc -c $(CFLAGS) $< -o $@
 
 $(GEN_LD): $(LDS)
 	sed 's/JRT_MEM_PHYS/$(JRT_MEM_HEX)/g' $< > $@

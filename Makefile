@@ -54,11 +54,12 @@ kernel_prepare: $(KERNEL_DIR)
 kernel_config: $(KERNEL_DIR) kernel_prepare
 	@echo " [*]	- configuring kernel"
 	cd $< && \
-		scripts/config --enable CONFIG_SERIAL_AMBA_PL011 && \
-		scripts/config --enable CONFIG_SERIAL_AMBA_PL011_CONSOLE && \
 		scripts/config --disable CONFIG_CPU_IDLE && \
 		scripts/config --disable CONFIG_HOTPLUG_CPU
 
+#		scripts/config --enable CONFIG_SERIAL_AMBA_PL011 &&
+#		scripts/config --enable CONFIG_SERIAL_AMBA_PL011_CONSOLE &&
+#
 $(KERNEL_IMG): $(KERNEL_DIR)
 	@echo " [*]	- building kernel"
 	cd $< && \
