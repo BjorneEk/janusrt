@@ -7,45 +7,9 @@ ENV PREFIX=/opt/$TARGET
 ENV PATH=$PREFIX/bin:$PATH
 ENV MAKEFLAGS=-j$(nproc)
 
-RUN apt-get update && apt-get install -y \
-	python3 \
-	python3-pip \
-	python3-setuptools \
-	python3-wheel \
-	python3-distutils \
-	python3-lib2to3 \
-	python3-dev \
-	build-essential \
-	bc \
-	make \
-	git \
-	curl \
-	wget \
-	cpio \
-	flex bison \
-	libncurses-dev \
-	libssl-dev \
-	libelf-dev \
-	busybox-static \
-	gcc-aarch64-linux-gnu \
-	binutils-aarch64-linux-gnu \
-	crossbuild-essential-arm64 \
-	gcc \
-	g++ \
-	texinfo \
-	gawk \
-	gperf \
-	patch \
-	xz-utils \
-	bzip2 \
-	unzip \
-	autoconf \
-	automake \
-	libtool \
-	libgmp-dev \
-	libmpfr-dev \
-	libmpc-dev \
-	zlib1g-dev \
+COPY packages.txt /tmp/
+RUN apt-get update && \
+	xargs -a /tmp/packages.txt apt-get install -y \
 	&& rm -rf /var/lib/apt/lists/*
 
 #RUN curl -LO https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.Rel1-x86_64-aarch64-none-elf.tar.xz && \
