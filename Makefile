@@ -36,7 +36,7 @@ all: $(KERNEL_IMG) $(BUSYBOX_BIN) rtprog kernelmod userspace rootfs initramfs
 
 # ---------------------------- KERNEL -----------------------------
 #KMAKE_FLAGS := V=1 -j1
-KMAKE_FLAGS := -j$$(nproc)
+KMAKE_FLAGS := -j$(shell  nproc)
 #KMAKE_FLAGS := -j1
 
 
@@ -82,14 +82,14 @@ $(BUSYBOX_DIR):
 
 $(BUSYBOX_CONFIGURED): $(BUSYBOX_DIR)
 	@echo " [*] - configuring busybox (static)"
-	cd $< && make distclean && make defconfig
+	cd $< && make distclean && make defconfig -j$(shell nproc)
 	cd $< && sed -i 's/^# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
-	cd $< && make oldconfig
+	cd $< && make oldconfig -j$(shell nproc)
 	touch $@
 
 $(BUSYBOX_BUILT): $(BUSYBOX_CONFIGURED)
 	@echo " [*] - building busybox"
-	cd $(BUSYBOX_DIR) && make ARCH=$(ARCH) CROSS_COMPILE=$(LINUX_CROSS) -j$$(nproc)
+	cd $(BUSYBOX_DIR) && make ARCH=$(ARCH) CROSS_COMPILE=$(LINUX_CROSS) -j$(shell nproc)
 
 $(BUSYBOX_BIN): $(BUSYBOX_BUILT)
 	@echo " [*] - installing busybox"

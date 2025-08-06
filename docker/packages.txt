@@ -1,3 +1,6 @@
+cmake
+ninja-build
+libz-dev
 device-tree-compiler
 python3
 python3-pip
