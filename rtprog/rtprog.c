@@ -12,7 +12,7 @@
 
 #define UART_FR_TXFF	(1 << 5)
 
-__attribute__((unused)) static void uart_putc(char c)
+static void uart_putc(char c)
 {
 	volatile uint32_t *fr;
 	volatile uint32_t *tx;
@@ -26,13 +26,13 @@ __attribute__((unused)) static void uart_putc(char c)
 	*tx = c;
 }
 
-__attribute__((unused)) static void uart_puts(char *s)
+static void uart_puts(char *s)
 {
 	while (*s)
 		uart_putc(*s++);
 }
 
-__attribute__((unused)) static void uart_putu32(uint32_t v)
+static void uart_putu32(uint32_t v)
 {
 	char buf[11];
 	int i;
@@ -54,17 +54,18 @@ __attribute__((unused)) static void uart_putu32(uint32_t v)
 
 void jrt_main(void)
 {
-//	uart_puts("a number: ");
-//	uart_putu32(69);
-//	uart_puts("\n");
+	uart_puts("a number: ");
+	uart_putu32(69);
+	uart_puts("\n");
 
-//	for (volatile int i = 0; i < 100000; ++i)
-//		uart_puts("[jrt] Hello from JRT!\n");
-	__asm__ volatile (
-		"brk #0xdead\n"
-	);
-	//while (1)
-	//	__asm__ volatile ("wfi"); // or just empty loop
+	for (volatile int i = 0; i < 100000; ++i)
+		uart_puts("[jrt] Hello from JRT!\n");
+	//__asm__ volatile (
+	//	"brk #0xdead\n"
+	//);
+	while (1)
+		;
+		//__asm__ volatile ("wfi"); // or just empty loop
 }
 /*
 __attribute__((section(".bss.mailbox")))

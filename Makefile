@@ -30,12 +30,26 @@ kernel_prepare: $(KERNEL_DIR)
 	cd $< && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS) modules_prepare
 	cd $< && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) $(KMAKE_FLAGS) modules
 
+#kernel_config_options := \
+#	--disable CONFIG_CPU_IDLE \
+#	--disable CONFIG_HOTPLUG_CPU \
+#	--enable  CONFIG_DEBUG_INFO \
+#	--enable  CONFIG_ARM_PSCI_FW \
+#	--enable  CONFIG_SMP \
+#	--enable  CONFIG_ARM64_PSCI
+#
+#kernel_config: $(KERNEL_DIR) kernel_prepare
+#	@echo " [*]	- configuring kernel"
+#	cd $< && for opt in $(kernel_config_options); do scripts/config $$opt; done
 kernel_config: $(KERNEL_DIR) kernel_prepare
 	@echo " [*]	- configuring kernel"
 	cd $< && \
 		scripts/config --disable CONFIG_CPU_IDLE && \
-		scripts/config --disable CONFIG_HOTPLUG_CPU
-
+		scripts/config --disable CONFIG_HOTPLUG_CPU && \
+		scripts/config --enable CONFIG_DEBUG_INFO=y && \
+		scripts/config --enable CONFIG_ARM_PSCI_FW && \
+		scripts/config --enable CONFIG_SMP && \
+		scripts/config --enable CONFIG_ARM64_PSCI
 #		scripts/config --enable CONFIG_SERIAL_AMBA_PL011 &&
 #		scripts/config --enable CONFIG_SERIAL_AMBA_PL011_CONSOLE &&
 #

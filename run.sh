@@ -40,6 +40,7 @@ $QEMU \
 	-kernel "$KERNEL" \
 	-initrd "$INITRAMFS" \
 	-append "$KERNEL_CMDLINE" \
+	-gdb tcp::1234 \
 	-nographic
 #-icount shift=7,align=on,sleep=on \
 #-d guest_errors,unimp,exec \

@@ -14,7 +14,8 @@ psci_cpu_on_arm64:
 	// load 0xc4000003, (PSCI_CPU_ON)
 	movz	x0, #0x0003
 	movk	x0, #0xc400, lsl #16
-	smc	#0
+//	smc	#0
+	hvc	#0
 	ret
 
 	.section .modinfo, "a"

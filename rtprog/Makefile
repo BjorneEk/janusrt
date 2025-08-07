@@ -25,7 +25,8 @@ CFLAGS +=			\
 	-ffreestanding		\
 	-Wall			\
 	-Werror			\
-	-O3			\
+	-O0			\
+	-g			\
 	$(COMMON_CFLAGS)	\
 	-I$(SHARED_DIR)
 

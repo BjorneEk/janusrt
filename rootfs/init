@@ -10,5 +10,7 @@ echo "[init] Booted Linux" > /dev/ttyAMA1
 insmod /rtcore.ko
 #./loader &
 #./checker
-echo "run busybox mknod /dev/rtcore c <major> 0"
+# temporary
+busybox mknod /dev/rtcore c 510 0
+cat /sys/module/rtcore/sections/.text
 exec /bin/sh
