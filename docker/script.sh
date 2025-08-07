@@ -10,8 +10,8 @@ case "$1" in
 			"$PROJECT/docker"
 		;;
 	run)
-		docker run --rm -it -v \
-			"$PROJECT":/project \
+		docker run --rm -it \
+			-v "$PROJECT":/project \
 			-w /project \
 			"$NAME" \
 			bash

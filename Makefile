@@ -2,10 +2,6 @@
 
 include config.mk
 
-#CROSS    := aarch64-linux-gnu-
-#RT_CROSS := aarch64-none-elf-
-#ARCH     := arm64
-
 # Repos
 KERNEL_SRC  := https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 BUSYBOX_SRC := https://git.busybox.net/busybox
@@ -13,22 +9,6 @@ BUSYBOX_SRC := https://git.busybox.net/busybox
 # Dependency versions
 KERNEL_VERSION  := v6.9
 BUSYBOX_VERSION := 1_36_1
-
-# Paths
-#KERNEL_DIR  := kernel
-#BUSYBOX_DIR := busybox
-#INITRAMFS   := initramfs.cpio
-#ROOTFS_DIR  := rootfs
-#SHARED_DIR  := shared
-#USPACE_DIR  := userspace
-
-# Artifacts
-#RT_BIN      := $(ROOTFS_DIR)/rt.bin
-#LOADER_BIN  := $(ROOTFS_DIR)/loader
-#CHECKER_BIN := $(ROOTFS_DIR)/checker
-#MODULE_KO   := $(ROOTFS_DIR)/rtcore.ko
-#KERNEL_IMG  := $(KERNEL_DIR)/arch/$(ARCH)/boot/Image
-#BUSYBOX_BIN := $(ROOTFS_DIR)/bin/busybox
 
 .PHONY: all clean rtprog kernelmod userspace rootfs initramfs run
 
@@ -38,7 +18,6 @@ all: $(KERNEL_IMG) $(BUSYBOX_BIN) rtprog kernelmod userspace rootfs initramfs
 #KMAKE_FLAGS := V=1 -j1
 KMAKE_FLAGS := -j$(shell  nproc)
 #KMAKE_FLAGS := -j1
-
 
 $(KERNEL_DIR):
 	@echo " [*]	- cloning kernel"
@@ -97,18 +76,7 @@ $(BUSYBOX_BIN): $(BUSYBOX_BUILT)
 	cp $(BUSYBOX_BUILT) $@
 	cd $(ROOTFS_DIR)/bin && for cmd in $(BUSYBOX_TOOLS); do ln -sf busybox $$cmd; done
 
-#$(BUSYBOX_BIN): $(BUSYBOX_DIR)
-#	@echo " [*]	- building busybox (static)"
-#	cd $< && make distclean && make defconfig
-#	cd $< && sed -i 's/^# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
-#	cd $< && make oldconfig
-#	cd $< && make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) -j$$(nproc)
-#	mkdir -p $(ROOTFS_DIR)/bin
-#	cp $</busybox $@
-#	cd $(ROOTFS_DIR)/bin && for cmd in $(BUSYBOX_TOOLS); do ln -sf busybox $$cmd; done
-
 # ---------------------------- MODULES ----------------------------
-
 # ---------------------------- RT-PROG ----------------------------
 rtprog: rootfs
 	@echo " [*]	- building $@"
@@ -129,26 +97,64 @@ rootfs:
 	@echo " [*]	- rootfs setup"
 	mkdir -p $(addprefix $(ROOTFS_DIR)/,bin sbin etc proc sys dev)
 	chmod +x $(ROOTFS_DIR)/init
-#	cp $(USPACE_DIR)/loader $(LOADER_BIN)
-#	cp kernelmod/rtcore.ko $(MODULE_KO)
-
 
 # ---------------------------- INITRAMFS --------------------------
 initramfs: rtprog userspace kernelmod rootfs $(BUSYBOX_BIN)
 	@echo " [*]	- creating initramfs"
 	cd $(ROOTFS_DIR) && find . | cpio -H newc -o > $(INITRAMFS)
 
+# ---------------------------- DEVICE-TREE -------------------------
 %.dtb: %.dts
 	@echo " [*]	- compiling device tree blob ($@)"
 	dtc -I dts -O dtb -o $@ $<
 
+# ---------------------------- BUILD-CONTAINER ---------------------
+DOCKER_FLAGS:=
+.docker-image-stamp: $(DOCKERFILE) $(PACKAGE_LIST)
+	@echo " [*]	- checking docker build context"
+	@if [ "$(IN_CONTAINER)" = "0" ]; then \
+		echo " [*]	- building docker image"; \
+		docker build $(DOCKER_FLAGS) -t $(DOCKER_IMG) $(DOCKER_DIR) && \
+			touch $@ && \
+			docker create --name tc $(DOCKER_IMG) && \
+			docker cp tc:/opt/toolchain-cache $(DOCKER_DIR) && \
+			docker rm tc; \
+	else \
+		echo " [X]	- inside container, not building"; \
+	fi
+
+# ---------------------------- COMPILE ---------------------------
+ifeq ($(IN_CONTAINER),0)
+compile: .docker-image-stamp
+else
 compile: $(KERNEL_BIN) initramfs $(DEVTREE_BLOB)
+endif
+compile:
+	@echo " [*]	- compiling jrt project"
+	@if [ "$(IN_CONTAINER)" = "0" ]; then \
+		echo " [*]	- invoking make in container..."; \
+		docker run --rm -it \
+			-v $(PROJECT_ROOT):/project \
+			-w /project \
+			$(DOCKER_IMG) \
+			/bin/bash -c "make $(MAKECMDGOALS) $(MAKEFLAGS)"; \
+	else \
+		echo " [*]	- building in container"; \
+	fi
+
+run-container: .docker-image-stamp
+	docker run --rm -it \
+		-v $(PROJECT_ROOT):/project \
+		-w /project \
+		$(DOCKER_IMG) \
+		bash
 
 # ---------------------------- RUN-QEMU  --------------------------
 run:
 	./run.sh $(JRT_MEM_PHYS) $(JRT_MEM_SIZE) $(DEVTREE_BLOB)
 
 clean:
+	$(RM) -rf .docker-image-stamp
 	$(RM) -rf $(DEVTREE_BLOB)
 	cd $(BUSYBOX_DIR) && make distclean || true
 	$(MAKE) -C kernelmod clean

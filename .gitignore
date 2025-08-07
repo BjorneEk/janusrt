@@ -37,6 +37,8 @@ initramfs.cpio
 # --- Docker build layers (optional) ---
 *.tar
 *.squashfs
+*.tar.*
+.docker-image-stamp
 
 # --- Logs & misc ---
 *.log

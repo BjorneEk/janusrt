@@ -1,3 +1,6 @@
+hexyl
+aria2
+tree
 cmake
 ninja-build
 libz-dev
