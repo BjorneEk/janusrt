@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "mailbox.h"
 
-#define UART_BASE	(0x09010000)
+#define UART_BASE	(0x09000000)
 //#define UART_BASE	(0x09000000)
 #define UART_TXFIFO	(UART_BASE + 0x00)
 #define UART_FR		(UART_BASE + 0x18)
@@ -54,18 +54,16 @@ static void uart_putu32(uint32_t v)
 
 void jrt_main(void)
 {
+	uint32_t i;
 	uart_puts("a number: ");
 	uart_putu32(69);
 	uart_puts("\n");
 
-	for (volatile int i = 0; i < 100000; ++i)
-		uart_puts("[jrt] Hello from JRT!\n");
-	//__asm__ volatile (
-	//	"brk #0xdead\n"
-	//);
-	while (1)
-		;
-		//__asm__ volatile ("wfi"); // or just empty loop
+	for (i = 0; i < 100; ++i) {
+		uart_puts("[jrt] Hello from JRT! ");
+		uart_putu32(i);
+		uart_puts("\n");
+	}
 }
 /*
 __attribute__((section(".bss.mailbox")))

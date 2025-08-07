@@ -26,7 +26,7 @@ all: $(MODULE_KO)
 $(MOD):
 	$(MAKE) -C $(KERNEL_DIR) $(KMAKE_FLAGS) modules
 
-$(MODULE_KO): $(MOD)	
+$(MODULE_KO): $(MOD)
 	@cp $< $@
 
 clean:
