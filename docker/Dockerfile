@@ -50,6 +50,29 @@ RUN echo "Checking Binutils archive..." && \
 RUN tar -czf "$TOOLCHAIN_CACHE/binutils.tar.gz" -C /opt $(basename $PREFIX)
 
 # -------------------------------------------------------
+# Build or extract GDB for $TARGET (aarch64-none-elf)
+# -------------------------------------------------------
+RUN echo "Checking GDB archive..." && \
+	if [ -f "$TOOLCHAIN_CACHE/gdb.tar.gz" ] && \
+		tar -xzf "$TOOLCHAIN_CACHE/gdb.tar.gz" -C /opt; then \
+		echo "GDB extracted successfully."; \
+	else \
+		echo "Archive missing or corrupt. Building GDB from source..."; \
+		mkdir -p /build/gdb-src && cd /build && \
+		aria2c -x 14 https://ftp.gnu.org/gnu/gdb/gdb-14.2.tar.xz && \
+		tar -xf gdb-14.2.tar.xz && \
+		mkdir gdb && cd gdb && \
+		../gdb-14.2/configure \
+			--target=$TARGET \
+			--prefix=$PREFIX \
+			--disable-nls && \
+		make $MAKEFLAGS && \
+		make install; \
+	fi
+
+RUN tar -czf "$TOOLCHAIN_CACHE/gdb.tar.gz" -C /opt $(basename $PREFIX)
+
+# -------------------------------------------------------
 # Build or extract GCC stage1 (no libc)
 # -------------------------------------------------------
 RUN echo "Checking GCC stage1 archive..." && \
@@ -68,6 +91,7 @@ RUN echo "Checking GCC stage1 archive..." && \
 			--prefix=$PREFIX \
 			--disable-nls \
 			--enable-languages=c \
+			--enable-gdb \
 			--without-headers \
 			--disable-shared \
 			--disable-threads \
