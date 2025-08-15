@@ -65,6 +65,11 @@ void jrt_main(void)
 		uart_puts("\n");
 	}
 }
+void periodic_func(void)
+{
+	uart_puts("periodic call\n");
+}
+
 /*
 __attribute__((section(".bss.mailbox")))
 struct mailbox mbox;

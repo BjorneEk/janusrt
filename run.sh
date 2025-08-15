@@ -14,7 +14,7 @@ JRT_MEM_SIZE="$2"
 
 JRT_MEM_HEX=$(printf "0x%x" "$JRT_MEM_PHYS")
 
-KERNEL="kernel/arch/$ARCH/boot/Image"
+KERNEL="kernel/kernel/arch/$ARCH/boot/Image"
 INITRAMFS='initramfs.cpio'
 #memmap=16M$0x3f000000 KERNEL_CMDLINE='console=ttyAMA0 isolcpus=3 nohz_full=3 rcu_nocbs=3 rdinit=/init'
 #KERNEL_CMDLINE="console=ttyAMA0 root=/dev/ram rw isolcpus=3 nohz_full=3 rcu_nocbs=3 memmap=16M\$${JRT_MEM_HEX}"

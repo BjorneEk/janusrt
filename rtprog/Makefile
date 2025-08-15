@@ -11,8 +11,8 @@ OBJCOPY := $(NONE_CROSS)objcopy
 #ROOTFS_DIR ?= ../rootfs
 #SHARED_DIR ?= ../shared
 
-SRC := rtprog.c boot.S psci.S
-OBJ := rtprog.o boot.o psci.o
+SRC := rtprog.c boot.S psci.S timer.S
+OBJ := rtprog.o boot.o psci.o timer.o
 ELF := rtprog.elf
 
 #BIN := $(ROOTFS_DIR)/rt.bin
