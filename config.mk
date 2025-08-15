@@ -23,9 +23,8 @@ DOCKER_DIR  := $(abspath docker)
 # Artifacts
 RT_BIN      := $(abspath $(ROOTFS_DIR)/rt.bin)
 LOADER_BIN  := $(abspath $(ROOTFS_DIR)/loader)
-CHECKER_BIN := $(abspath $(ROOTFS_DIR)/checker)
 MODULE_KO   := $(abspath $(ROOTFS_DIR)/rtcore.ko)
-KERNEL_IMG  := $(abspath $(KERNEL_DIR)/arch/$(ARCH)/boot/Image)
+KERNEL_IMG  := $(abspath $(KERNEL_DIR)/kernel/arch/$(ARCH)/boot/Image)
 BUSYBOX_BIN := $(abspath $(ROOTFS_DIR)/bin/busybox)
 
 DEVTREE_BLOB := $(DEVTREE_DIR)/$(TARGET).dtb

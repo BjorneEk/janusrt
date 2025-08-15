@@ -24,11 +24,11 @@ KMAKE_FLAGS := \
 all: $(MODULE_KO)
 
 $(MOD):
-	$(MAKE) -C $(KERNEL_DIR) $(KMAKE_FLAGS) modules
+	$(MAKE) -C $(KERNEL_DIR)/kernel $(KMAKE_FLAGS) modules
 
 $(MODULE_KO): $(MOD)
 	@cp $< $@
 
 clean:
-	$(MAKE) -C $(KERNEL_DIR) $(KMAKE_FLAGS) clean
+	$(MAKE) -C $(KERNEL_DIR)/kernel $(KMAKE_FLAGS) clean
 

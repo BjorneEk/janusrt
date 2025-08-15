@@ -1,5 +1,7 @@
-kernel/
-busybox/
+kernel/kernel
+kernel/.kernel.stamp
+busybox/busybox
+busybox/.busybox.stamp
 
 rootfs/*
 !rootfs/init
@@ -19,6 +21,7 @@ rtprog/gen.ld
 *.d
 *.cmd
 *.dtb
+*.stamp
 userspace/loader
 
 # --- Output files ---
