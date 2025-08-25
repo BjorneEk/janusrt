@@ -17,14 +17,14 @@
 #include <string.h>
 #include <errno.h>
 
-#include "../shared/mailbox.h"
+#include "../shared/rtcore.h"
 
-#define RTCORE_IOCTL_START_CPU _IOW('r', 1, struct rtcore_start_args)
+//#define RTCORE_IOCTL_START_CPU _IOW('r', 1, struct rtcore_start_args)
 
-struct rtcore_start_args {
-	uint64_t entry_phys;
-	uint64_t core_id;
-};
+//struct rtcore_start_args {
+//	uint64_t entry_phys;
+//	uint64_t core_id;
+//};
 
 int main(int argc, char *argv[])
 {
@@ -86,16 +86,16 @@ int main(int argc, char *argv[])
 	close(fd_in);
 
 	struct rtcore_start_args args = {
-		.entry_phys = JRT_MEM_PHYS,
+		.entry_user = (uintptr_t)jrt_mem,
 		.core_id = 3
 	};
 
-	printf("Starting CPU 3 at 0x%lx...\n", args.entry_phys);
+	printf("Starting CPU 3 at user address: 0x%lx...\n", args.entry_user);
 	if (ioctl(fd, RTCORE_IOCTL_START_CPU, &args) < 0) {
 		perror("ioctl cpu_on");
 		return 1;
 	}
 
-	printf("Started CPU 3 at 0x%lx\n", args.entry_phys);
+	printf("Started CPU 3 at user address: 0x%lx\n", args.entry_user);
 	return 0;
 }

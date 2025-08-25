@@ -1,8 +1,9 @@
+
 /**
  * Author Gustaf Franzen <gustaffranzen@icloud.com>
  */
-#ifndef _MAILBOX_H_
-#define _MAILBOX_H_
+#ifndef _RTCORE_H_
+#define _RTCORE_H_
 
 #include "types.h"
 
@@ -13,6 +14,22 @@
 //	u32 core_id;
 //	u32 entrypoint;
 //};
+
+#define DEVICE_NAME "rtcore"
+
+typedef struct rtcore_start_args {
+	uint64_t entry_user;
+	uint64_t core_id;
+} start_cpu_args_t;
+
+typedef struct rtcore_sched_args {
+	uint64_t phys_addr;
+} sched_prog_args_t;
+
+
+
+#define RTCORE_IOCTL_START_CPU	_IOW('r', 1, start_cpu_args_t)
+#define RTCORE_IOCTL_SCHED_PROG	_IOW('r', 2, sched_prog_args_t)
 
 #define CACHELINE	64
 #define RING_ORDER	12

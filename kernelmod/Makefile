@@ -29,6 +29,11 @@ $(MOD):
 $(MODULE_KO): $(MOD)
 	@cp $< $@
 
+softclean:
+	$(RM) $(obj-m)
+	$(RM) $(rtcore-objs)
+	$(RM) $(MOD)
+
 clean:
 	$(MAKE) -C $(KERNEL_DIR)/kernel $(KMAKE_FLAGS) clean
 

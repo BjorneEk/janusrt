@@ -12,6 +12,7 @@ BUSYBOX_VERSION := 1_36_1
 
 .PHONY: all clean kernel busybox rtprog kernelmod userspace rootfs initramfs run
 
+#all: compile
 all: kernel busybox rtprog kernelmod userspace rootfs initramfs
 
 # ---------------------------- KERNEL -----------------------------
@@ -51,7 +52,7 @@ rootfs:
 # ---------------------------- INITRAMFS --------------------------
 initramfs: rtprog userspace kernelmod rootfs busybox
 	@echo " [*]	- creating initramfs"
-	cd $(ROOTFS_DIR) && find . | cpio -H newc -o > $(INITRAMFS)
+	cd $(ROOTFS_DIR) && find . | cpio -H newc -ov > $(INITRAMFS)
 
 # ---------------------------- DEVICE-TREE -------------------------
 %.dtb: %.dts
@@ -102,6 +103,14 @@ run-container: .docker-image.stamp
 # ---------------------------- RUN-QEMU  --------------------------
 run:
 	./run.sh $(JRT_MEM_PHYS) $(JRT_MEM_SIZE) $(DEVTREE_BLOB)
+
+softclean:
+	$(RM) -rf $(RT_BIN) $(LOADER_BIN) $(CHECKER_BIN) $(MODULE_KO) $(INITRAMFS)
+	$(RM) -rf $(addprefix $(ROOTFS_DIR)/,bin sbin etc proc sys dev)
+	$(RM) -rf $(DEVTREE_BLOB)
+	$(MAKE) -C kernelmod softclean
+	$(MAKE) -C rtprog clean
+	$(MAKE) -C userspace clean
 
 clean:
 	$(RM) -rf .docker-image.stamp

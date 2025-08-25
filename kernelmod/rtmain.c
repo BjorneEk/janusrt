@@ -16,89 +16,253 @@
 #include <linux/mm.h>
 #include <linux/ioctl.h>
 #include <linux/platform_device.h>
+#include <asm/cacheflush.h>
+#include <asm/sysreg.h>      /* for CTR_EL0 */
+#include <linux/types.h>
 
 #include "psci.h"
+#include "rtcore.h"
 
-#define DEVICE_NAME "rtcore"
-#define RTCORE_IOCTL_START_CPU _IOW('r', 1, struct rtcore_start_args)
+typedef struct rtcore_ctx {
+	unsigned long user_base;	/* VMA start we mapped for this fd */
+	size_t user_len;		/* bytes mapped for this fd */
+	phys_addr_t phys_base;		/* page-aligned physical base */
+	unsigned long first_off;	/* phys_start_unaligned & (PAGE_SIZE-1) */
+	bool mapped;
+} rtcore_ctx_t;
 
-struct rtcore_start_args {
-	uint64_t entry_phys;
-	uint64_t core_id;
+static int rtcore_open(struct inode *ino, struct file *filp);
+static int rtcore_release(struct inode *ino, struct file *filp);
+static long rtcore_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
+static int rtcore_mmap(struct file *filp, struct vm_area_struct *vma);
+
+static const struct file_operations rtcore_fops = {
+	.owner          = THIS_MODULE,
+	.unlocked_ioctl = rtcore_ioctl,
+	.mmap           = rtcore_mmap,
+	.open           = rtcore_open,
+	.release        = rtcore_release,
 };
 
 static dev_t dev_num;
 static struct class *rtcore_class;
 static struct cdev rtcore_cdev;
+
+static size_t G_MEM_OFF = 0;
+
 static void __iomem *jrt_mem_virt;
 
-static long rtcore_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int rtcore_open(struct inode *ino, struct file *filp)
 {
-	struct rtcore_start_args args;
-	int res;
+	rtcore_ctx_t *ctx;
 
-	if (cmd != RTCORE_IOCTL_START_CPU) {
-		pr_info("rtcore: cmd != RTCORE_IOCTL_START_CPU\n");
-		return -ENOTTY;
+	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
+	if (!ctx)
+		return -ENOMEM;
+	filp->private_data = ctx;
+
+	return 0;
+}
+
+static int rtcore_release(struct inode *ino, struct file *filp)
+{	kfree(filp->private_data);
+	return 0;
+}
+
+
+static inline void clean_dcache_pou_range(unsigned long start, unsigned long end)
+{
+	u64 ctr;
+	unsigned int dminline;
+	unsigned long line;
+	unsigned long addr;
+
+	ctr = read_sysreg(CTR_EL0);
+	dminline = (ctr >> 16) & 0xF;
+	line = 4UL << dminline;
+
+	start &= ~(line - 1);
+	for (addr = start; addr < end; addr += line)
+		asm volatile("dc cvau, %0" :: "r"(addr) : "memory");
+
+	asm volatile("dsb ish" ::: "memory");
+}
+
+static inline void inval_icache_pou_range(unsigned long start, unsigned long end)
+{
+	u64 ctr;
+	unsigned int iminline;
+	unsigned long line;
+	unsigned long addr;
+
+	ctr = read_sysreg(CTR_EL0);
+	iminline = ctr & 0xF;
+	line = 4UL << iminline;
+
+	start &= ~(line - 1);
+	for (addr = start; addr < end; addr += line)
+		asm volatile("ic ivau, %0" :: "r"(addr) : "memory");
+
+	asm volatile("dsb ish" ::: "memory");
+	asm volatile("isb");
+}
+
+static void rtcore_icache_sync_phys_range(phys_addr_t phys, size_t len)
+{
+	size_t off;
+	unsigned long start, end;
+
+	if (!len)
+		return;
+
+	off   = phys - JRT_MEM_PHYS;
+	start = (unsigned long)((void *)((uintptr_t)jrt_mem_virt + off));
+	end   = start + len;
+
+	pr_info("rtcore: clear %lu bytes of icache from 0x%lx\n",
+		len,
+		start);
+
+//	dcache_clean_poc(start, len);
+	clean_dcache_pou_range(start, end);
+	inval_icache_pou_range(start, end);
+//	flush_icache_range(start, end);
+}
+
+static long rtcore_start_cpu(struct file *file, unsigned long arg)
+{
+	rtcore_ctx_t *ctx;
+	start_cpu_args_t args;
+	phys_addr_t entry_phys;
+
+	ctx = file->private_data;
+
+	if (copy_from_user(&args, (void __user *)arg, sizeof(args)))
+		return -EFAULT;
+
+	if (!ctx || !ctx->mapped) {
+		pr_err("rtcore: no mmap registered on this fd\n");
+		return -EINVAL;
 	}
 
-	if (copy_from_user(&args, (void __user *)arg, sizeof(args))) {
-
-		pr_info("rtcore: failed to copy args from user\n");
+	/* Bounds check: entry_user must lie inside the VMA we created */
+	if (
+		args.entry_user < ctx->user_base ||
+		args.entry_user >= ctx->user_base + ctx->user_len) {
+		pr_err(
+			"rtcore: entry_user 0x%llx not "
+			"within mapping [0x%lx..0x%lx)\n",
+			args.entry_user,
+			ctx->user_base,
+			ctx->user_base + ctx->user_len);
 		return -EFAULT;
 	}
 
+	/* VA -> PA: phys_base + first_off + (delta from user_base) */
+	entry_phys = ctx->phys_base + ctx->first_off +
+		(phys_addr_t)(args.entry_user - ctx->user_base);
 
+	/* Optional: enforce 4-byte alignment */
+	if (entry_phys & 0x3) {
+		pr_err("rtcore: entry phys 0x%pa not 4-byte aligned\n", &entry_phys);
+		return -EINVAL;
+	}
 
-//	__flush_dcache_area(jrt_mem_virt, JRT_MEM_SIZE);
-//	flush_icache_range((unsigned long)jrt_mem_virt,
-//		(unsigned long)jrt_mem_virt + JRT_MEM_SIZE);
+	/* Optional: clamp to reserved window */
+	if (	entry_phys < JRT_MEM_PHYS ||
+		entry_phys >= JRT_MEM_PHYS + JRT_MEM_SIZE) {
+		pr_err("rtcore: entry phys 0x%pa outside JRT region\n", &entry_phys);
+		return -EINVAL;
+	}
 
-	pr_info("rtcore: starting CPU: %llu at 0x%llx\n", args.core_id, args.entry_phys);
-	res = psci_cpu_on(args.core_id, args.entry_phys, 0);
-	pr_info("rtcore: psci_cpu_on returned: %d\n", res);
+	pr_info("rtcore: starting CPU %llu at phys 0x%pa (VA 0x%llx)\n",
+		args.core_id, &entry_phys, args.entry_user);
+
+	/* If you’ve just copied code into this mapping, consider cache maintenance:
+	 * __flush_dcache_area(kva, len); flush_icache_range(kva, kva+len);
+	 * (You can compute 'kva' from jrt_mem_virt + (entry_phys - JRT_MEM_PHYS))
+	 */
+	rtcore_icache_sync_phys_range(
+		entry_phys,
+		ctx->user_len - (args.entry_user - ctx->user_base));
+	return psci_cpu_on(args.core_id, entry_phys, 0);
+}
+
+static long rtcore_sched_prog(struct file *file, unsigned long arg)
+{
+	pr_info("rtcore: not implemented\n");
 	return 0;
+}
+
+static long rtcore_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	switch (cmd) {
+	case RTCORE_IOCTL_START_CPU:
+		return rtcore_start_cpu(file, arg);
+	case RTCORE_IOCTL_SCHED_PROG:
+		return rtcore_sched_prog(file, arg);
+	default:
+		return -ENOTTY;
+	}
 }
 
 static int rtcore_mmap(struct file *filp, struct vm_area_struct *vma)
 {
+	struct rtcore_ctx *ctx;
 	unsigned long size;
-	int res;
+	unsigned long first_off, pfn;
+	phys_addr_t phys_start_unaligned;
+	phys_addr_t phys_base;
 
+	ctx = filp->private_data;
 	size = vma->vm_end - vma->vm_start;
 
-	pr_info("rtcore: mmap request %lx bytes at user addr %lx\n", size, vma->vm_start);
-	pr_info("rtcore: remapping phys %lx\n", (unsigned long)JRT_MEM_PHYS);
-
-	if (size > JRT_MEM_SIZE) {
+	/* Sanity vs your reserved window usage */
+	if (G_MEM_OFF + size > JRT_MEM_SIZE) {
 		pr_err("rtcore: mmap size too large\n");
 		return -EINVAL;
 	}
 
-	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+	/* Compute the *unaligned* physical start we want to expose next */
+	phys_start_unaligned = JRT_MEM_PHYS + G_MEM_OFF;
 
-	res = remap_pfn_range(
-		vma,
-		vma->vm_start,
-		JRT_MEM_PHYS >> PAGE_SHIFT,
-		size,
-		vma->vm_page_prot);
+	/* Split it into page-aligned base + first-page offset */
+	first_off = phys_start_unaligned & (PAGE_SIZE - 1);
+	phys_base = phys_start_unaligned & PAGE_MASK;
+	pfn       = phys_base >> PAGE_SHIFT;
 
-	if (res) {
+	/* Map with requested protections
+	 * (WB is preferable for code; drop noncached)
+	 * If you truly need noncached,
+	 * keep pgprot_noncached() — but exec will be slow.
+	 * vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot); */
+
+	if (remap_pfn_range(vma, vma->vm_start, pfn, size, vma->vm_page_prot)) {
 		pr_err("rtcore: remap_pfn_range failed!\n");
 		return -EAGAIN;
 	}
 
-	pr_info("rtcore: mmap successful\n");
+	/* Record mapping info for this fd so ioctl can translate VAs to PAs */
+	ctx->user_base = vma->vm_start;
+	ctx->user_len  = size;
+	ctx->phys_base = phys_base;
+	ctx->first_off = first_off;
+	ctx->mapped    = true;
+
+	/* Advance “allocation” cursor in your shared
+	 * window by the exact bytes the user sees */
+	G_MEM_OFF += size;
+
+	pr_info(
+		"rtcore: mmap %lx bytes at user %lx "
+		"-> phys base 0x%pa (+off 0x%lx)\n",
+		size,
+		vma->vm_start,
+		&phys_base,
+		first_off);
 
 	return 0;
 }
-
-static const struct file_operations rtcore_fops = {
-	.owner = THIS_MODULE,
-	.unlocked_ioctl = rtcore_ioctl,
-	.mmap = rtcore_mmap,
-};
 
 static int __init rtcore_init(void)
 {
@@ -114,6 +278,7 @@ static int __init rtcore_init(void)
 		pr_err("rtcore: failed to map JRT memory\n");
 		return -ENOMEM;
 	}
+
 	pr_info("rtcore: registered with major %d\n", MAJOR(dev_num));
 	pr_info("rtcore: module loaded\n");
 	return 0;
