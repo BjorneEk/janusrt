@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 
 	jrt_mem = mmap(
 		NULL,
-		st.st_size,
+		st.st_size * 2,
 		PROT_READ | PROT_WRITE,
 		MAP_SHARED,
 		fd,

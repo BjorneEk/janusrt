@@ -3,7 +3,7 @@
 #include ../config.mk
 
 CC := $(NONE_CROSS)gcc
-LD := $(NONE_CROSS)ld
+LD := $(NONE_CROSS)gcc
 OBJCOPY := $(NONE_CROSS)objcopy
 
 #CROSS_COMPILE ?= aarch64-none-elf-
@@ -11,8 +11,8 @@ OBJCOPY := $(NONE_CROSS)objcopy
 #ROOTFS_DIR ?= ../rootfs
 #SHARED_DIR ?= ../shared
 
-SRC := rtprog.c boot.S psci.S timer.S
-OBJ := rtprog.o boot.o psci.o timer.o
+SRC := rtprog.c boot.S psci.S timer_aarch64.S irq.c timer.c uart.c
+OBJ := rtprog.o boot.o psci.o timer_aarch64.o irq.o timer.o uart.o
 ELF := rtprog.elf
 
 #BIN := $(ROOTFS_DIR)/rt.bin
@@ -30,9 +30,11 @@ CFLAGS +=			\
 	$(COMMON_CFLAGS)	\
 	-I$(SHARED_DIR) \
 	-fpie \
-	-fno-plt
+	-fno-semantic-interposition \
+	-fvisibility=hidden
 
-LDFLAGS += -pie
+LDFLAGS += -Wl,-T,$(LDS) -Wl,-pie -Wl,-z,noexecstack
+
 JRT_MEM_HEX:=$(shell printf "0x%x" $(JRT_MEM_PHYS))
 
 .PHONY: clean debug
@@ -48,8 +50,13 @@ all: debug $(RT_BIN)
 $(GEN_LD): $(LDS)
 	sed 's/JRT_MEM_PHYS/$(JRT_MEM_HEX)/g' $< > $@
 
-$(ELF): $(OBJ) $(GEN_LD)
-	$(LD) $(LDFLAGS) -T $(GEN_LD) $(OBJ) -o $@
+#$(ELF): $(OBJ) $(GEN_LD)
+#	$(LD) $(LDFLAGS) -T $(GEN_LD) $(OBJ) -o $@
+$(ELF): $(OBJ) $(LDS)
+	$(LD) $(CFLAGS) $(OBJ) $(LDFLAGS) -o $@
+
+$(RT_BIN): $(ELF)
+	$(OBJCOPY) -O binary $< $@
 
 $(RT_BIN): $(ELF)
 	$(OBJCOPY) -O binary $< $@

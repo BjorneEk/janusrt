@@ -4,58 +4,46 @@
 
 #include <stdint.h>
 #include "mailbox.h"
+#include "timer.h"
+#include "irq.h"
 #include "rtcore.h"
+#include "uart.h"
+#define PIC_ADDR(sym, outptr) \
+	do { \
+		void * __tmp; \
+		__asm__ __volatile__( \
+			"adrp %0, " #sym "\n\t" \
+			"add  %0, %0, :lo12:" #sym \
+			: "=r"(__tmp) : : ); \
+		(outptr) = __tmp; \
+	} while (0)
 
-#define UART_BASE	(0x09000000)
-//#define UART_BASE	(0x09000000)
-#define UART_TXFIFO	(UART_BASE + 0x00)
-#define UART_FR		(UART_BASE + 0x18)
+void periodic_func(void);
 
-#define UART_FR_TXFF	(1 << 5)
-
-static void uart_putc(char c)
+static void timer_trampoline(void)
 {
-	volatile uint32_t *fr;
-	volatile uint32_t *tx;
-
-	fr = (uint32_t *)UART_FR;
-	tx = (uint32_t *)UART_TXFIFO;
-
-	while (*fr & UART_FR_TXFF)
-		;
-
-	*tx = c;
+	timer_irq_handler();
 }
 
-static void uart_puts(char *s)
+void timer_init(void)
 {
-	while (*s)
-		uart_putc(*s++);
-}
+	//irq_fn_t tf;
 
-static void uart_putu32(uint32_t v)
-{
-	char buf[11];
-	int i;
-
-	i = 10;
-	buf[i--] = '\0';
-
-	if (v == 0) {
-		uart_putc('0');
-		return;
-	}
-
-	while (v && i >= 0) {
-		buf[i--] = '0' + (v % 10);
-		v /= 10;
-	}
-	uart_puts(&buf[i+1]);
+	//PIC_ADDR(timer_irq_handler, (void *)tf);
+	irq_register_ppi(EL1_PHYS_TIMER_PPI, timer_trampoline);
+	set_timer_func(periodic_func);
+	start_periodic_task_freq(1);
 }
 
 void jrt_main(void)
 {
 	uint32_t i;
+
+	uart_init();
+
+	irq_init();
+	timer_init();
+
 	uart_puts("a number: ");
 	uart_putu32(69);
 	uart_puts("\n");
@@ -98,35 +86,13 @@ void periodic_func(void)
 {
 	u8 data[16];
 	int budget;
+	uart_puts("periodic call\n");
 	for (budget = 0; budget < 64; budget++) {
 		if (mpsc_pop(&rtcore_mem->ring, data) != 0)
 			break;
 		uart_puts((char*)data);
 		uart_puts("\n");
 	}
-	uart_puts("periodic call\n");
+	//uart_puts("periodic call\n");
 }
 
-/*
-__attribute__((section(".bss.mailbox")))
-struct mailbox mbox;
-void _start(void)
-{
-	uint32_t i, j;
-	mbox.counter = 0;
-	mbox.last_value = 42;
-
-	j = 0;
-	for (;;) {
-		mbox.counter++;
-		mbox.last_value += 3;
-		uart_putu32(j);
-		for (i = 0; i < 1000; ++i)
-			;
-		j += i;
-		uart_puts("RT: ");
-		uart_putu32(j);
-		uart_putc('\n');
-	}
-}
-*/

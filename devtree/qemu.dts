@@ -12,8 +12,8 @@
 		#size-cells = <2>;
 		ranges;
 
-		custom_stack: custom_region@50100000 {
-			reg = <0x00000000 0x50100000 0x00000000 0x00100000>; // 1MB
+		custom_stack: custom_region@51000000 {
+			reg = <0x00000000 0x51000000 0x00000000 0x00100000>; // 1MB
 		};
 	};
 
