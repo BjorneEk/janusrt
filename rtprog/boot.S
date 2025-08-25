@@ -1,9 +1,11 @@
+
+// Author: Gustaf Franzen <gustaffranzen@icloud.com>
 	.section .text._start
 	.global _start
 	.extern jrt_main
 	.extern psci_cpu_off
 	.extern irq_dispatch
-	.extern start_periodic_task_hz
+	.extern sync_handler
 
 _start:
 	// switch to EL1
@@ -87,32 +89,7 @@ el1_entry:
 hang:
 	wfe
 	b	hang
-
-// ---------------- Timer IRQ helper (calls periodic_func + re-arm) ------------
-//	.global timer_irq_handler
-//	.extern periodic_func
-//timer_irq_handler:
-//	stp	x29, x30, [sp, #-16]!
-//	mov	x29, sp
-//
-//	bl	periodic_func
-//	// next_cval += period; program it
-//	adrp	x9, g_next_cval
-//	add	x9, x9, :lo12:g_next_cval
-//	ldr	x10, [x9]			// next_cval
-//	adrp	x11, g_period_ticks
-//	add	x11, x11, :lo12:g_period_ticks
-//	ldr	x12, [x11]			// period
-//	add	x10, x10, x12			// advance
-//	str	x10, [x9]
-//	msr	CNTP_CVAL_EL0, x10
-
-//	ldp	x29, x30, [sp], #16
-//	ret
-
 // ---------------- Spins for unconfigured exceptions --------------------------
-sync_spin:
-	b	sync_spin
 fiq_spin:
 	b	fiq_spin
 serr_spin:
@@ -120,6 +97,13 @@ serr_spin:
 bad_irq_spin:
 	wfe
 	b	bad_irq_spin
+
+// ----------- Syncronous exception ---------------------------------------------
+sync_el1h:
+	mrs	x0, ESR_EL1	// syndrome
+	mrs	x1, FAR_EL1	// faulting VA
+	bl  sync_handler	// call C function
+	eret
 
 // ---------------- IRQ entry (EL1) --------------------------------------------
 	.align 3
@@ -183,44 +167,11 @@ irq_common_el1:
 
 	add	sp, sp, #176
 	eret
-//	sub	sp, sp, #16
-//	mrs	x0, ICC_IAR1_EL1
-//	str	x0, [sp]
-//	and	w1, w0, #0xFFFFFF        // INTID
-//	mov	w2, #1020
-//	cmp	w1, w2
-//	b.hs	1f                       // spurious
-//	mov	w0, w1                   // x0=intid
-//	bl	irq_dispatch             // C: void irq_dispatch(u32)
-//1:	ldr	x0, [sp]
-//	add	sp, sp, #16
-//	msr	ICC_EOIR1_EL1, x0
-//	eret
-
-//	sub	sp, sp, #16
-//	mrs	x0, ICC_IAR1_EL1
-//	str	x0, [sp]
-//	and	w1, w0, #0xFFFFFF      // INTID
-//	mov	w2, #30                 // CNTPNSIRQ
-//	cmp	w1, w2
-//	b.ne	1f
-//	bl	timer_irq_handler
-//	b	2f
-//1:
-//	ldr	x0, [sp]
-//	add	sp, sp, #16
-//	msr	ICC_EOIR1_EL1, x0
-//	b	bad_irq_spin
-//2:
-//	ldr	x0, [sp]
-//	add	sp, sp, #16
-//	msr	ICC_EOIR1_EL1, x0
-//	eret
 
 // ---------------- Vector table (128-byte entries, 2 KiB aligned) -------------
 	.align 11
 vector_table:
-	b	sync_spin          // EL1t Sync
+	b	sync_el1h          // EL1t Sync
 	.balign 128
 	b	irq_common_el1     // EL1t IRQ
 	.balign 128
@@ -229,7 +180,7 @@ vector_table:
 	b	serr_spin          // EL1t SError
 	.balign 128
 
-	b	sync_spin          // EL1h Sync
+	b	sync_el1h          // EL1h Sync
 	.balign 128
 	b	irq_common_el1     // EL1h IRQ
 	.balign 128
@@ -238,7 +189,7 @@ vector_table:
 	b	serr_spin          // EL1h SError
 	.balign 128
 
-	b	sync_spin          // EL0 AArch64 Sync
+	b	sync_el1h          // EL0 AArch64 Sync
 	.balign 128
 	b	irq_common_el1     // EL0 AArch64 IRQ
 	.balign 128
@@ -247,7 +198,7 @@ vector_table:
 	b	serr_spin
 	.balign 128
 
-	b	sync_spin          // EL0 AArch32 Sync
+	b	sync_el1h          // EL0 AArch32 Sync
 	.balign 128
 	b	irq_common_el1     // EL0 AArch32 IRQ
 	.balign 128

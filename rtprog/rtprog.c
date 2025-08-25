@@ -8,15 +8,6 @@
 #include "irq.h"
 #include "rtcore.h"
 #include "uart.h"
-#define PIC_ADDR(sym, outptr) \
-	do { \
-		void * __tmp; \
-		__asm__ __volatile__( \
-			"adrp %0, " #sym "\n\t" \
-			"add  %0, %0, :lo12:" #sym \
-			: "=r"(__tmp) : : ); \
-		(outptr) = __tmp; \
-	} while (0)
 
 void periodic_func(void);
 
@@ -27,9 +18,6 @@ static void timer_trampoline(void)
 
 void timer_init(void)
 {
-	//irq_fn_t tf;
-
-	//PIC_ADDR(timer_irq_handler, (void *)tf);
 	irq_register_ppi(EL1_PHYS_TIMER_PPI, timer_trampoline);
 	set_timer_func(periodic_func);
 	start_periodic_task_freq(1);
