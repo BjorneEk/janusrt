@@ -59,7 +59,8 @@ el1_entry:
 	mov	sp, x0
 
 	// Install vector table
-	ldr	x0, =vector_table
+	adrp	x0, vector_table
+	add	x0, x0, :lo12:vector_table
 	msr	VBAR_EL1, x0
 	isb
 

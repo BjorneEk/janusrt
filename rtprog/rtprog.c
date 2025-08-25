@@ -66,7 +66,7 @@ void jrt_main(void)
 		uart_puts("\n");
 	}
 }
-/*
+
 void memcpy(u8 *to, u8 *from, size_t sz)
 {
 	size_t i;
@@ -92,18 +92,19 @@ static inline int mpsc_pop(struct mpsc_ring *r, u8 out[16])
 	r->tail = tail + 1;
 	return 0;
 }
-*/
-//static rtcore_mem_t *rtcore_mem = (void*)JRT_MEM_PHYS;
+
+static rtcore_mem_t *rtcore_mem = (void*)JRT_MEM_PHYS;
 void periodic_func(void)
 {
-	//u8 data[16];
-	//int budget;
+	u8 data[16];
+	int budget;
+	for (budget = 0; budget < 64; budget++) {
+		if (mpsc_pop(&rtcore_mem->ring, data) != 0)
+			break;
+		uart_puts((char*)data);
+		uart_puts("\n");
+	}
 	uart_puts("periodic call\n");
-	//for (budget = 0; budget < 64; budget++) {
-	//	if (mpsc_pop(&rtcore_mem->ring, data) != 0)
-	//		break;
-	//	uart_puts((char*)data);
-	//}
 }
 
 /*

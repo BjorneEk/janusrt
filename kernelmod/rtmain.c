@@ -284,7 +284,7 @@ static long rtcore_sched_prog(struct file *file, unsigned long arg)
 
 	char msg[16];
 	snprintf(msg, sizeof(msg), "ep:%llx", entry_phys);
-	int r = mpsc_push(&rtcore_mem->ring, (struct tojrt_rec*)msg, 1);
+	int r = mpsc_push(&rtcore_mem->ring, (struct tojrt_rec*)msg, 0);
 	pr_info("rtcore: shed %i\n", r);
 	return 0;
 }

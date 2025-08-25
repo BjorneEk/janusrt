@@ -100,17 +100,17 @@ int main(int argc, char *argv[])
 	}
 
 	printf("Started CPU 3 at user address: 0x%lx\n", args.entry_user);
-/*	struct rtcore_sched_args args2 = {
+	struct rtcore_sched_args args2 = {
 		.entry_user = (uintptr_t)jrt_mem,
 	};
-	for (int i = 0; i < 10; ++i) {
-		sleep(1);
+	for (int i = 0; i < 1000; ++i) {
+		//sleep(1);
 		if (ioctl(fd, RTCORE_IOCTL_SCHED_PROG, &args2) < 0) {
 			perror("ioctl sched_prog");
 			return 1;
 		}
 	}
 	printf("DONE\n");
-*/
+
 	return 0;
 }
