@@ -31,6 +31,8 @@ void jrt_main(void)
 
 	irq_init();
 	timer_init();
+	//u8 *n = 0;
+	//*n = 1;
 
 	uart_puts("a number: ");
 	uart_putu32(69);
@@ -41,7 +43,7 @@ void jrt_main(void)
 		uart_putu32(i);
 		uart_puts("\n");
 	}
-}
+	}
 
 void memcpy(u8 *to, u8 *from, size_t sz)
 {

@@ -5,7 +5,6 @@
 	.extern jrt_main
 	.extern psci_cpu_off
 	.extern irq_dispatch
-	.extern sync_handler
 
 _start:
 	// switch to EL1
@@ -99,10 +98,23 @@ bad_irq_spin:
 	b	bad_irq_spin
 
 // ----------- Syncronous exception ---------------------------------------------
+.text
+	.align 4
+	.global sync_el1h
+	.extern sync_exception_entry
+
 sync_el1h:
-	mrs	x0, ESR_EL1	// syndrome
-	mrs	x1, FAR_EL1	// faulting VA
-	bl  sync_handler	// call C function
+	// preserve LR just in case we want to return (we don't)
+	sub	sp, sp, #16
+	str	x30, [sp]
+
+	mrs	x0, ESR_EL1
+	mrs	x1, ELR_EL1
+	mrs	x2, FAR_EL1
+	bl	sync_exception_entry
+
+	ldr	x30, [sp]
+	add	sp, sp, #16
 	eret
 
 // ---------------- IRQ entry (EL1) --------------------------------------------
