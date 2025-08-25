@@ -22,4 +22,43 @@
 	typedef uintptr_t uptr;
 	typedef intptr_t  sptr;
 #endif
+
+/* ---------- Alignment + packing macros ---------- */
+
+/* Align a type or object to N bytes */
+#if defined(__GNUC__) || defined(__clang__)
+# define JRT_ALIGNED(n)   __attribute__((aligned(n)))
+#else
+# error "Need alignment macro for this compiler"
+#endif
+
+/* Pack a struct with no padding */
+#if defined(__GNUC__) || defined(__clang__)
+# define JRT_PACKED       __attribute__((packed))
+#else
+# error "Need packed macro for this compiler"
+#endif
+
+/* Compile-time static assertion */
+#if __STDC_VERSION__ >= 201112L
+# define JRT_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+#elif defined(__GNUC__)
+# define JRT_STATIC_ASSERT(cond, msg) typedef char static_assertion_##msg[(cond)?1:-1] __attribute__((unused))
+#else
+# define JRT_STATIC_ASSERT(cond, msg) typedef char static_assertion_##msg[(cond)?1:-1]
+#endif
+
+/* ---------- Cacheline size (arch-dependent) ---------- */
+#ifndef JRT_CACHELINE
+# define JRT_CACHELINE 64   /* safe default for arm64, x86_64 */
+#endif
+
+/* ---------- Likely/unlikely branch prediction hints ---------- */
+#if defined(__GNUC__) || defined(__clang__)
+# define JRT_LIKELY(x)    __builtin_expect(!!(x), 1)
+# define JRT_UNLIKELY(x)  __builtin_expect(!!(x), 0)
+#else
+# define JRT_LIKELY(x)   (x)
+# define JRT_UNLIKELY(x) (x)
+#endif
 #endif

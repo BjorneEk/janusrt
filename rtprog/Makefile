@@ -28,8 +28,11 @@ CFLAGS +=			\
 	-O0			\
 	-g			\
 	$(COMMON_CFLAGS)	\
-	-I$(SHARED_DIR)
+	-I$(SHARED_DIR) \
+	-fpie \
+	-fno-plt
 
+LDFLAGS += -pie
 JRT_MEM_HEX:=$(shell printf "0x%x" $(JRT_MEM_PHYS))
 
 .PHONY: clean debug
@@ -46,7 +49,7 @@ $(GEN_LD): $(LDS)
 	sed 's/JRT_MEM_PHYS/$(JRT_MEM_HEX)/g' $< > $@
 
 $(ELF): $(OBJ) $(GEN_LD)
-	$(LD) -T $(GEN_LD) $(OBJ) -o $@
+	$(LD) $(LDFLAGS) -T $(GEN_LD) $(OBJ) -o $@
 
 $(RT_BIN): $(ELF)
 	$(OBJCOPY) -O binary $< $@

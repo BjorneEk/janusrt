@@ -65,8 +65,6 @@ el1_entry:
 
 	// Start periodic timer: N ticks
 	mov	x0, #1
-//	mov	x1, #10000
-//	mul	x0, x0, x1
 	bl	start_periodic_task_hz
 
 	// Jump to main

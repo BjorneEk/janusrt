@@ -6,64 +6,31 @@
 
 #include "types.h"
 
-//#define RTCORE_MAGIC (0xB0)
-//#define RTCORE_BOOT _IOW(RTCORE_MAGIC, 0x01, struct rtcore_boot)
+/* ====== Tunables ====== */
+#ifndef TOJRT_ORDER
+#define TOJRT_ORDER  12                  /* 2^12 = 4096 slots */
+#endif
+#define TOJRT_SIZE   (1u << TOJRT_ORDER)
+#define TOJRT_MASK   (TOJRT_SIZE - 1)
 
-//struct rtcore_start_args {
-//	u32 core_id;
-//	u32 entrypoint;
-//};
-
-#define CACHELINE	64
-#define RING_ORDER	12
-#define RING_SIZE	(1u << RING_ORDER)	// 4096 entries
-#define RING_MASK	(RING_SIZE - 1)
-
-struct __attribute__((aligned(CACHELINE))) spsc_ring {
-	// producer writes head, consumer writes tail
-	_Atomic u32	head;	// next slot to write (prod)
-	_Atomic u32	tail;	// next slot to read (cons)
-	u32		_pad0[14];
-
-	// slot-valid flags to avoid extra fences per slot (optional)
-	_Atomic u8		flags[RING_SIZE]; // 0: empty, 1: full
-
-	// fixed-size messages to keep it fast; tune to your needs
-	struct {
-		u16 type;
-		u16 len;
-		u8  payload[56];	// 64-byte slots
-	} __attribute__((packed, aligned(64))) data[RING_SIZE];
+struct JRT_PACKED tojrt_rec {
+	u8 b[16];
 };
+JRT_STATIC_ASSERT(sizeof(struct tojrt_rec) == 16, "rec16_size");
 
-typedef struct __attribute__((aligned(CACHELINE))) jrt_kernel_mailbox {
-	u32	version;
-	u32	flags;
-	u64	cntfrq_hz;		// fill by Linux for RT's info
-	u64	reserved0;
 
-	// Linux -> RT ring
-	struct spsc_ring	l2r;
+/* ====== Ring structure (shared) ======
+ * head: next ticket to claim (producers atomically fetch_add)
+ * tail: next slot consumer will read (consumer only)
+ * flags[i]: 0=empty, 1=full
+ */
+struct JRT_ALIGNED(JRT_CACHELINE) mpsc_ring {
+	u32 head;                     /* producer ticket (wraps naturally) */
+	u32 tail;                     /* consumer cursor */
+	u8 _pad0[JRT_CACHELINE - 8]; /* avoid false sharing */
 
-	// RT -> Linux ring
-	struct spsc_ring	r2l;
-
-	// doorbell counters (optional, for debugging)
-	_Atomic u64	l2r_dbell;
-	_Atomic u64	r2l_dbell;
-} jrt_kernel_mailbox_t;
-
-#define PROG_CAP (64)
-typedef struct mem_share {
-	jrt_kernel_mailbox_t mailbox;
-
-	u64 size;
-	u64 cap;
-
-	u64 programs[PROG_CAP];
-	u32 nprograms;
-
-	u8 mem[];
-} mem_share_t;
+	u8 flags[TOJRT_SIZE];       /* one byte per slot: 0 empty, 1 full */
+	struct tojrt_rec data[TOJRT_SIZE];
+};
 
 #endif

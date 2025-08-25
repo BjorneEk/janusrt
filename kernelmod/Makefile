@@ -14,7 +14,8 @@ rtcore-objs := rtmain.o psci.o psci_arm64.o
 
 ccflags-y += \
 	-I$(abspath $(SHARED_DIR)) \
-	$(COMMON_CFLAGS)
+	$(COMMON_CFLAGS) \
+	-mno-outline-atomics
 
 KMAKE_FLAGS := \
 	ARCH=$(ARCH) \

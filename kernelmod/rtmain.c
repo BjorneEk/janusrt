@@ -19,6 +19,7 @@
 #include <asm/cacheflush.h>
 #include <asm/sysreg.h>      /* for CTR_EL0 */
 #include <linux/types.h>
+#include <linux/atomic.h>
 
 #include "psci.h"
 #include "rtcore.h"
@@ -48,6 +49,7 @@ static dev_t dev_num;
 static struct class *rtcore_class;
 static struct cdev rtcore_cdev;
 
+static rtcore_mem_t __iomem *rtcore_mem;
 static size_t G_MEM_OFF = 0;
 
 static void __iomem *jrt_mem_virt;
@@ -119,9 +121,10 @@ static void rtcore_icache_sync_phys_range(phys_addr_t phys, size_t len)
 	start = (unsigned long)((void *)((uintptr_t)jrt_mem_virt + off));
 	end   = start + len;
 
-	pr_info("rtcore: clear %lu bytes of icache from 0x%lx\n",
+	pr_info("rtcore: clear %lu bytes of icache from 0x%lx [0x%lx]\n",
 		len,
-		start);
+		start,
+		(unsigned long)phys);
 
 //	dcache_clean_poc(start, len);
 	clean_dcache_pou_range(start, end);
@@ -159,7 +162,7 @@ static long rtcore_start_cpu(struct file *file, unsigned long arg)
 	}
 
 	/* VA -> PA: phys_base + first_off + (delta from user_base) */
-	entry_phys = ctx->phys_base + ctx->first_off +
+	entry_phys = ctx->phys_base +
 		(phys_addr_t)(args.entry_user - ctx->user_base);
 
 	/* Optional: enforce 4-byte alignment */
@@ -187,10 +190,102 @@ static long rtcore_start_cpu(struct file *file, unsigned long arg)
 		ctx->user_len - (args.entry_user - ctx->user_base));
 	return psci_cpu_on(args.core_id, entry_phys, 0);
 }
+static u32 mpsc_fetch_add_head_relaxed(u32 *p)
+{
+	u32		old;
+
+	old = (u32)atomic_fetch_add_relaxed(1, (atomic_t *)p);
+
+	return old;
+}
+
+static int mpsc_push(struct mpsc_ring *r,
+	const struct tojrt_rec *rec,
+	int try_only)	/* 0 = spin, 1 = return -EAGAIN */
+{
+	u32		t;
+	u32		idx;
+	u8		flag;
+
+	t = mpsc_fetch_add_head_relaxed(&r->head);
+	idx = t & TOJRT_MASK;
+
+	/* wait until consumer cleared this slot (flags[idx] == 0) */
+	if (try_only) {
+		flag = smp_load_acquire(&r->flags[idx]);
+		if (flag)
+			return -EAGAIN;
+	} else {
+		for (;;) {
+			flag = smp_load_acquire(&r->flags[idx]);
+			if (!flag)
+				break;
+			cpu_relax();
+		}
+	}
+
+	/* write payload first */
+	memcpy(&r->data[idx], rec, sizeof(*rec));
+
+	/* publish: set flag with release so consumer sees data */
+	smp_store_release(&r->flags[idx], 1);
+
+	return 0;
+}
 
 static long rtcore_sched_prog(struct file *file, unsigned long arg)
 {
-	pr_info("rtcore: not implemented\n");
+	rtcore_ctx_t *ctx;
+	start_cpu_args_t args;
+	phys_addr_t entry_phys;
+
+	ctx = file->private_data;
+
+	if (copy_from_user(&args, (void __user *)arg, sizeof(args)))
+		return -EFAULT;
+
+	if (!ctx || !ctx->mapped) {
+		pr_err("rtcore: no mmap registered on this fd\n");
+		return -EINVAL;
+	}
+
+	/* Bounds check: entry_user must lie inside the VMA we created */
+	if (
+		args.entry_user < ctx->user_base ||
+		args.entry_user >= ctx->user_base + ctx->user_len) {
+		pr_err(
+			"rtcore: entry_user 0x%llx not "
+			"within mapping [0x%lx..0x%lx)\n",
+			args.entry_user,
+			ctx->user_base,
+			ctx->user_base + ctx->user_len);
+		return -EFAULT;
+	}
+
+	/* VA -> PA: phys_base + first_off + (delta from user_base) */
+	entry_phys = ctx->phys_base +
+		(phys_addr_t)(args.entry_user - ctx->user_base);
+
+	/* Optional: enforce 4-byte alignment */
+	if (entry_phys & 0x3) {
+		pr_err("rtcore: entry phys 0x%pa not 4-byte aligned\n", &entry_phys);
+		return -EINVAL;
+	}
+
+	/* Optional: clamp to reserved window */
+	if (	entry_phys < JRT_MEM_PHYS ||
+		entry_phys >= JRT_MEM_PHYS + JRT_MEM_SIZE) {
+		pr_err("rtcore: entry phys 0x%pa outside JRT region\n", &entry_phys);
+		return -EINVAL;
+	}
+
+	//pr_info("rtcore: starting CPU %llu at phys 0x%pa (VA 0x%llx)\n",
+	//	args.core_id, &entry_phys, args.entry_user);
+
+	char msg[16];
+	snprintf(msg, sizeof(msg), "ep:%llx", entry_phys);
+	int r = mpsc_push(&rtcore_mem->ring, (struct tojrt_rec*)msg, 1);
+	pr_info("rtcore: shed %i\n", r);
 	return 0;
 }
 
@@ -213,18 +308,20 @@ static int rtcore_mmap(struct file *filp, struct vm_area_struct *vma)
 	unsigned long first_off, pfn;
 	phys_addr_t phys_start_unaligned;
 	phys_addr_t phys_base;
+	size_t sz;
 
 	ctx = filp->private_data;
 	size = vma->vm_end - vma->vm_start;
 
+	sz = G_MEM_OFF + size + sizeof(rtcore_mem_t);
 	/* Sanity vs your reserved window usage */
-	if (G_MEM_OFF + size > JRT_MEM_SIZE) {
-		pr_err("rtcore: mmap size too large\n");
+	if (sz > JRT_MEM_SIZE) {
+		pr_err("rtcore: mmap size too large (%lu bytes)\n", sz);
 		return -EINVAL;
 	}
 
 	/* Compute the *unaligned* physical start we want to expose next */
-	phys_start_unaligned = JRT_MEM_PHYS + G_MEM_OFF;
+	phys_start_unaligned = JRT_MEM_PHYS + sizeof(rtcore_mem_t) + G_MEM_OFF;
 
 	/* Split it into page-aligned base + first-page offset */
 	first_off = phys_start_unaligned & (PAGE_SIZE - 1);
@@ -263,6 +360,12 @@ static int rtcore_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	return 0;
 }
+static inline void ipc_init(struct mpsc_ring *r)
+{
+	smp_store_release((u32*)(&r->head), 0);
+	smp_store_release((u32*)(&r->tail), 0);
+	memset(r->flags, 0, TOJRT_SIZE);
+}
 
 static int __init rtcore_init(void)
 {
@@ -279,8 +382,11 @@ static int __init rtcore_init(void)
 		return -ENOMEM;
 	}
 
+	rtcore_mem = jrt_mem_virt;
 	pr_info("rtcore: registered with major %d\n", MAJOR(dev_num));
 	pr_info("rtcore: module loaded\n");
+	ipc_init(&rtcore_mem->ring);
+	pr_info("rtcore: initialized linux -> jrt ipc\n");
 	return 0;
 }
 
