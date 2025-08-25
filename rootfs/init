@@ -8,9 +8,7 @@ mount -t sysfs none /sys
 echo "[init] Booted Linux" > /dev/ttyAMA1
 
 insmod /rtcore.ko
-#./loader &
-#./checker
-# temporary
+
 busybox mknod /dev/rtcore c 510 0
 cat /sys/module/rtcore/sections/.text
 exec /bin/sh

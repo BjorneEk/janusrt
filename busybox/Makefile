@@ -8,7 +8,7 @@ BUSYBOX_BUILT:=$(BUSYBOX_REPO)/busybox
 
 .PHONY: all clean
 
-all: $(BUSYBOX_STAMP)
+all: copy_tools
 
 $(BUSYBOX_REPO):
 	@echo " [*]	- cloning busybox"
@@ -38,6 +38,8 @@ BUSYBOX_TOOLS:= \
 
 $(BUSYBOX_STAMP): $(BUSYBOX_BUILT)
 	@echo " [*] - installing busybox"
+
+copy_tools: $(BUSYBOX_STAMP)
 	mkdir -p $(ROOTFS_DIR)/bin
 	cp $(BUSYBOX_BUILT) $(BUSYBOX_BIN)
 	cd $(ROOTFS_DIR)/bin && \

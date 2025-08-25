@@ -12,8 +12,8 @@ BUSYBOX_VERSION := 1_36_1
 
 .PHONY: all clean kernel busybox rtprog kernelmod userspace rootfs initramfs run
 
-#all: compile
-all: kernel busybox rtprog kernelmod userspace rootfs initramfs
+all: compile
+#all: kernel busybox rtprog kernelmod userspace rootfs initramfs $(DEVTREE_BLOB)
 
 # ---------------------------- KERNEL -----------------------------
 KMAKE_FLAGS :=
@@ -52,7 +52,7 @@ rootfs:
 # ---------------------------- INITRAMFS --------------------------
 initramfs: rtprog userspace kernelmod rootfs busybox
 	@echo " [*]	- creating initramfs"
-	cd $(ROOTFS_DIR) && find . | cpio -H newc -ov > $(INITRAMFS)
+	cd $(ROOTFS_DIR) && find . | cpio -H newc -o > $(INITRAMFS)
 
 # ---------------------------- DEVICE-TREE -------------------------
 %.dtb: %.dts
