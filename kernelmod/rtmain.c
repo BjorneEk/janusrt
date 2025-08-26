@@ -21,8 +21,10 @@
 #include <linux/types.h>
 #include <linux/atomic.h>
 
-#include "psci.h"
 #include "rtcore.h"
+#include "memory_layout.h"
+
+#include "psci.h"
 
 typedef struct rtcore_ctx {
 	unsigned long user_base;	/* VMA start we mapped for this fd */
@@ -49,7 +51,8 @@ static dev_t dev_num;
 static struct class *rtcore_class;
 static struct cdev rtcore_cdev;
 
-static rtcore_mem_t __iomem *rtcore_mem;
+static struct mpsc_ring __iomem *tojrt_ring;
+
 static size_t G_MEM_OFF = 0;
 
 static void __iomem *jrt_mem_virt;
@@ -284,7 +287,7 @@ static long rtcore_sched_prog(struct file *file, unsigned long arg)
 
 	char msg[16];
 	snprintf(msg, sizeof(msg), "ep:%llx", entry_phys);
-	int r = mpsc_push(&rtcore_mem->ring, (struct tojrt_rec*)msg, 0);
+	int r = mpsc_push(tojrt_ring, (struct tojrt_rec*)msg, 0);
 	pr_info("rtcore: shed %i\n", r);
 	return 0;
 }
@@ -313,7 +316,7 @@ static int rtcore_mmap(struct file *filp, struct vm_area_struct *vma)
 	ctx = filp->private_data;
 	size = vma->vm_end - vma->vm_start;
 
-	sz = G_MEM_OFF + size + sizeof(rtcore_mem_t);
+	sz = G_MEM_OFF + size;
 	/* Sanity vs your reserved window usage */
 	if (sz > JRT_CODE_SIZE) {
 		pr_err("rtcore: mmap size too large (%lu bytes)\n", sz);
@@ -321,7 +324,7 @@ static int rtcore_mmap(struct file *filp, struct vm_area_struct *vma)
 	}
 
 	/* Compute the *unaligned* physical start we want to expose next */
-	phys_start_unaligned = JRT_CODE_PHYS + sizeof(rtcore_mem_t) + G_MEM_OFF;
+	phys_start_unaligned = JRT_CODE_PHYS + G_MEM_OFF;
 
 	/* Split it into page-aligned base + first-page offset */
 	first_off = phys_start_unaligned & (PAGE_SIZE - 1);
@@ -378,14 +381,19 @@ static int __init rtcore_init(void)
 
 	jrt_mem_virt = memremap(JRT_CODE_PHYS, JRT_CODE_SIZE, MEMREMAP_WB);
 	if (!jrt_mem_virt) {
-		pr_err("rtcore: failed to map JRT memory\n");
+		pr_err("rtcore: failed to map JRT_CODE  memory\n");
 		return -ENOMEM;
 	}
 
-	rtcore_mem = jrt_mem_virt;
+	tojrt_ring = memremap(TOJRT_RING_ADDR, TOJRT_RING_SIZE, MEMREMAP_WB);
+	if (!tojrt_ring) {
+		pr_err("rtcore: failed to map TOJRT_RING memory\n");
+		return -ENOMEM;
+	}
+
 	pr_info("rtcore: registered with major %d\n", MAJOR(dev_num));
 	pr_info("rtcore: module loaded\n");
-	ipc_init(&rtcore_mem->ring);
+	ipc_init(tojrt_ring);
 	pr_info("rtcore: initialized linux -> jrt ipc\n");
 	return 0;
 }

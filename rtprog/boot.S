@@ -1,5 +1,8 @@
-
 // Author: Gustaf Franzen <gustaffranzen@icloud.com>
+
+	#include "autogen/memory_layout.h"
+	.equ JRT_STACK_START_CONST, JRT_STACK_START
+
 	.section .text._start
 	.global _start
 	.extern jrt_main
@@ -57,7 +60,7 @@ el1_entry:
 	msr	SPSel, #1
 
 	// hardware-defined stack address
-	ldr	x0, =0x51000000
+	ldr	x0, =JRT_STACK_START_CONST
 	mov	sp, x0
 
 	// Install vector table

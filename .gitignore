@@ -2,7 +2,7 @@ kernel/kernel
 kernel/.kernel.stamp
 busybox/busybox
 busybox/.busybox.stamp
-
+shared/autogen
 rootfs/*
 !rootfs/init
 

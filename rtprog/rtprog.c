@@ -8,6 +8,7 @@
 // shared includes
 #include "mailbox.h"
 #include "rtcore.h"
+#include "memory_layout.h"
 
 // libc includes
 #include "string.h"
@@ -71,14 +72,14 @@ static inline int mpsc_pop(struct mpsc_ring *r, u8 out[16])
 	return 0;
 }
 
-static rtcore_mem_t *rtcore_mem = (void*)JRT_CODE_PHYS;
+static struct mpsc_ring *g_ipc_ring = (void*)TOJRT_RING_ADDR;
 void periodic_func(void)
 {
 	u8 data[16];
 	int budget;
 	uart_puts("periodic call\n");
 	for (budget = 0; budget < 64; budget++) {
-		if (mpsc_pop(&rtcore_mem->ring, data) != 0)
+		if (mpsc_pop(g_ipc_ring, data) != 0)
 			break;
 		uart_puts((char*)data);
 		uart_puts("\n");
