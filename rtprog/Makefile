@@ -20,26 +20,34 @@ ELF := rtprog.elf
 LDS := linker.ld
 GEN_LD := gen.ld
 
-CFLAGS +=			\
-	-nostdlib		\
-	-ffreestanding		\
-	-Wall			\
-	-Werror			\
-	-O0			\
-	-g			\
-	$(COMMON_CFLAGS)	\
-	-I$(SHARED_DIR) \
-	-fpie \
-	-fno-semantic-interposition \
+LIBC_DIR  := libc
+LIBC_NAME := jrtlibc
+LIBC      := $(LIBC_DIR)/lib$(LIBC_NAME).a
+
+CFLAGS +=				\
+	-nostdlib			\
+	-ffreestanding			\
+	-Wall				\
+	-Werror				\
+	-O0				\
+	-g				\
+	$(COMMON_CFLAGS)		\
+	-I$(SHARED_DIR)			\
+	-I$(LIBC_DIR)			\
+	-fpie				\
+	-fno-semantic-interposition	\
 	-fvisibility=hidden
 
-LDFLAGS += -Wl,-T,$(LDS) -Wl,-pie -Wl,-z,noexecstack
+LDFLAGS += -Wl,-T,$(LDS) -Wl,-pie -Wl,-z,noexecstack -L$(LIBC_DIR) -l$(LIBC_NAME)
 
 JRT_MEM_HEX:=$(shell printf "0x%x" $(JRT_MEM_PHYS))
 
 .PHONY: clean debug
 
 all: debug $(RT_BIN)
+
+$(LIBC):
+	$(MAKE) -C $(dir $@) $(notdir $@)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@
@@ -52,7 +60,7 @@ $(GEN_LD): $(LDS)
 
 #$(ELF): $(OBJ) $(GEN_LD)
 #	$(LD) $(LDFLAGS) -T $(GEN_LD) $(OBJ) -o $@
-$(ELF): $(OBJ) $(LDS)
+$(ELF): $(OBJ) $(LDS) $(LIBC)
 	$(LD) $(CFLAGS) $(OBJ) $(LDFLAGS) -o $@
 
 $(RT_BIN): $(ELF)
@@ -70,6 +78,7 @@ debug:
 	@echo "CFLAGS	$(CFLAGS)"
 
 clean:
-	$(RM) -f $(GEN_LD)
-	$(RM) -f *.o *.elf
+	$(MAKE) -C $(LIBC_DIR) clean
+	$(RM) $(GEN_LD)
+	$(RM) *.o *.elf
 

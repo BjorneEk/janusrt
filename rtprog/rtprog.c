@@ -2,11 +2,19 @@
  * Author: Gustaf Franzen <gustaffranzen@icloud.com>
  */
 
+// core includes
 #include <stdint.h>
+
+// shared includes
 #include "mailbox.h"
+#include "rtcore.h"
+
+// libc includes
+#include "string.h"
+
+// jrt includes
 #include "timer.h"
 #include "irq.h"
-#include "rtcore.h"
 #include "uart.h"
 
 void periodic_func(void);
@@ -43,14 +51,6 @@ void jrt_main(void)
 		uart_putu32(i);
 		uart_puts("\n");
 	}
-	}
-
-void memcpy(u8 *to, u8 *from, size_t sz)
-{
-	size_t i;
-
-	for (i = 0; i < sz; ++i)
-		to[i] = from[i];
 }
 
 static inline int mpsc_pop(struct mpsc_ring *r, u8 out[16])

@@ -13,6 +13,7 @@ rtprog/gen.ld
 *.ko
 *.elf
 *.bin
+*.a
 *.map
 *.mod
 *.mod.c
