@@ -22,9 +22,4 @@ typedef struct rtcore_sched_args {
 #define RTCORE_IOCTL_START_CPU	_IOW('r', 1, start_cpu_args_t)
 #define RTCORE_IOCTL_SCHED_PROG	_IOW('r', 2, sched_prog_args_t)
 
-typedef struct rtcore_mem {
-	struct mpsc_ring ring;
-	u8 data[];
-} rtcore_mem_t;
-
 #endif

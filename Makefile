@@ -10,7 +10,7 @@ BUSYBOX_SRC := https://git.busybox.net/busybox
 KERNEL_VERSION  := v6.9
 BUSYBOX_VERSION := 1_36_1
 
-.PHONY: all clean kernel busybox rtprog kernelmod userspace rootfs initramfs run
+.PHONY: all clean kernel busybox rtprog kernelmod userspace rootfs initramfs run shared
 
 all: compile
 #all: kernel busybox rtprog kernelmod userspace rootfs initramfs $(DEVTREE_BLOB)
@@ -27,19 +27,24 @@ busybox:
 	@echo " [*]	- make busybox"
 	$(MAKE) -C $@
 
+# ---------------------------- SHARED ------------------------------
+shared:
+	@echo " [*]	- building $@"
+	$(MAKE) -C $@
+
 # ---------------------------- MODULES ----------------------------
 # ---------------------------- RT-PROG ----------------------------
-rtprog: rootfs
+rtprog: rootfs shared
 	@echo " [*]	- building $@"
 	$(MAKE) -C $@
 
 # ---------------------------- USERSPACE --------------------------
-userspace: rootfs
+userspace: rootfs shared
 	@echo " [*]	- building $@"
 	$(MAKE) -C $@
 
 # ---------------------------- KERNEL-MOD -------------------------
-kernelmod: kernel rootfs
+kernelmod: kernel rootfs shared
 	@echo " [*]	- building $@"
 	$(MAKE) -C $@
 
