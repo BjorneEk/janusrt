@@ -6,24 +6,19 @@
 	#address-cells = <0x02>;
 	compatible = "linux,dummy-virt";
 
-
-	reserved-memory-stack {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-
-		custom_stack: custom_region@51000000 {
-			reg = <0x00000000 0x51000000 0x00000000 0x00100000>; // 1MB
-		};
-	};
-
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
 
-		custom_region: custom_region@50000000 {
-			reg = <0x00000000 0x50000000 0x00000000 0x00100000>; // 1MB
+		custom_code: code@50000000 {
+			reg = <0x00000000 0x50000000 0x00000000 0x01000000>; // 16MB
+			no-map;
+		};
+
+		custom_data: data@51000000 {
+			reg = <0x00000000 0x51000000 0x00000000 0x01000000>; // 16MB
+			no-map;
 		};
 	};
 
