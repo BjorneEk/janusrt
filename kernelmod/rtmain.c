@@ -117,7 +117,7 @@ static void rtcore_icache_sync_phys_range(phys_addr_t phys, size_t len)
 	if (!len)
 		return;
 
-	off   = phys - JRT_MEM_PHYS;
+	off   = phys - JRT_CODE_PHYS;
 	start = (unsigned long)((void *)((uintptr_t)jrt_mem_virt + off));
 	end   = start + len;
 
@@ -172,8 +172,8 @@ static long rtcore_start_cpu(struct file *file, unsigned long arg)
 	}
 
 	/* Optional: clamp to reserved window */
-	if (	entry_phys < JRT_MEM_PHYS ||
-		entry_phys >= JRT_MEM_PHYS + JRT_MEM_SIZE) {
+	if (	entry_phys < JRT_CODE_PHYS ||
+		entry_phys >= JRT_CODE_PHYS + JRT_CODE_SIZE) {
 		pr_err("rtcore: entry phys 0x%pa outside JRT region\n", &entry_phys);
 		return -EINVAL;
 	}
@@ -273,8 +273,8 @@ static long rtcore_sched_prog(struct file *file, unsigned long arg)
 	}
 
 	/* Optional: clamp to reserved window */
-	if (	entry_phys < JRT_MEM_PHYS ||
-		entry_phys >= JRT_MEM_PHYS + JRT_MEM_SIZE) {
+	if (	entry_phys < JRT_CODE_PHYS ||
+		entry_phys >= JRT_CODE_PHYS + JRT_CODE_SIZE) {
 		pr_err("rtcore: entry phys 0x%pa outside JRT region\n", &entry_phys);
 		return -EINVAL;
 	}
@@ -315,13 +315,13 @@ static int rtcore_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	sz = G_MEM_OFF + size + sizeof(rtcore_mem_t);
 	/* Sanity vs your reserved window usage */
-	if (sz > JRT_MEM_SIZE) {
+	if (sz > JRT_CODE_SIZE) {
 		pr_err("rtcore: mmap size too large (%lu bytes)\n", sz);
 		return -EINVAL;
 	}
 
 	/* Compute the *unaligned* physical start we want to expose next */
-	phys_start_unaligned = JRT_MEM_PHYS + sizeof(rtcore_mem_t) + G_MEM_OFF;
+	phys_start_unaligned = JRT_CODE_PHYS + sizeof(rtcore_mem_t) + G_MEM_OFF;
 
 	/* Split it into page-aligned base + first-page offset */
 	first_off = phys_start_unaligned & (PAGE_SIZE - 1);
@@ -376,7 +376,7 @@ static int __init rtcore_init(void)
 	rtcore_class = class_create(DEVICE_NAME);
 	device_create(rtcore_class, NULL, dev_num, NULL, DEVICE_NAME);
 
-	jrt_mem_virt = memremap(JRT_MEM_PHYS, JRT_MEM_SIZE, MEMREMAP_WB);
+	jrt_mem_virt = memremap(JRT_CODE_PHYS, JRT_CODE_SIZE, MEMREMAP_WB);
 	if (!jrt_mem_virt) {
 		pr_err("rtcore: failed to map JRT memory\n");
 		return -ENOMEM;

@@ -102,7 +102,7 @@ run-container: .docker-image.stamp
 
 # ---------------------------- RUN-QEMU  --------------------------
 run:
-	./run.sh $(JRT_MEM_PHYS) $(JRT_MEM_SIZE) $(DEVTREE_BLOB)
+	./run.sh $(JRT_CODE_PHYS) $(JRT_CODE_SIZE) $(DEVTREE_BLOB)
 
 softclean:
 	$(RM) -rf $(RT_BIN) $(LOADER_BIN) $(CHECKER_BIN) $(MODULE_KO) $(INITRAMFS)

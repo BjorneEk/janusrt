@@ -40,7 +40,7 @@ CFLAGS +=				\
 
 LDFLAGS += -Wl,-T,$(LDS) -Wl,-pie -Wl,-z,noexecstack -L$(LIBC_DIR) -l$(LIBC_NAME)
 
-JRT_MEM_HEX:=$(shell printf "0x%x" $(JRT_MEM_PHYS))
+JRT_CODE_HEX:=$(shell printf "0x%x" $(JRT_CODE_PHYS))
 
 .PHONY: clean debug
 
@@ -56,7 +56,7 @@ $(LIBC):
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(GEN_LD): $(LDS)
-	sed 's/JRT_MEM_PHYS/$(JRT_MEM_HEX)/g' $< > $@
+	sed 's/JRT_CODE_PHYS/$(JRT_CODE_HEX)/g' $< > $@
 
 #$(ELF): $(OBJ) $(GEN_LD)
 #	$(LD) $(LDFLAGS) -T $(GEN_LD) $(OBJ) -o $@

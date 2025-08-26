@@ -71,7 +71,7 @@ static inline int mpsc_pop(struct mpsc_ring *r, u8 out[16])
 	return 0;
 }
 
-static rtcore_mem_t *rtcore_mem = (void*)JRT_MEM_PHYS;
+static rtcore_mem_t *rtcore_mem = (void*)JRT_CODE_PHYS;
 void periodic_func(void)
 {
 	u8 data[16];

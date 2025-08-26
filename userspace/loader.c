@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (st.st_size > JRT_MEM_SIZE) {
+	if (st.st_size > JRT_CODE_SIZE) {
 		fprintf(stderr, "<program>.bin too big\n");
 		close(fd_in);
 		return 1;
