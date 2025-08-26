@@ -34,11 +34,12 @@ CFLAGS +=				\
 	$(COMMON_CFLAGS)		\
 	-I$(SHARED_DIR)			\
 	-I$(LIBC_DIR)			\
-	-fpie				\
+#	-fpie				\
 	-fno-semantic-interposition	\
 	-fvisibility=hidden
 
-LDFLAGS += -Wl,-T,$(LDS) -Wl,-pie -Wl,-z,noexecstack -L$(LIBC_DIR) -l$(LIBC_NAME)
+#LDFLAGS += -Wl,-T,$(GEN_LD) -Wl,-pie -Wl,-z,noexecstack -L$(LIBC_DIR) -l$(LIBC_NAME)
+LDFLAGS += -Wl,-T,$(GEN_LD) -L$(LIBC_DIR) -l$(LIBC_NAME)
 
 JRT_CODE_HEX:=$(shell printf "0x%x" $(JRT_CODE_PHYS))
 
@@ -60,11 +61,9 @@ $(GEN_LD): $(LDS)
 
 #$(ELF): $(OBJ) $(GEN_LD)
 #	$(LD) $(LDFLAGS) -T $(GEN_LD) $(OBJ) -o $@
-$(ELF): $(OBJ) $(LDS) $(LIBC)
-	$(LD) $(CFLAGS) $(OBJ) $(LDFLAGS) -o $@
 
-$(RT_BIN): $(ELF)
-	$(OBJCOPY) -O binary $< $@
+$(ELF): $(OBJ) $(GEN_LD) $(LIBC)
+	$(LD) $(CFLAGS) $(OBJ) $(LDFLAGS) -o $@
 
 $(RT_BIN): $(ELF)
 	$(OBJCOPY) -O binary $< $@
