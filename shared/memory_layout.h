@@ -6,9 +6,10 @@
 #include "rtcore.h"
 
 #define TOJRT_RING_ADDR (JRT_MEM_PHYS)
-#define JRT_STACK_START ((JRT_MEM_PHYS + sizeof(struct mpsc_ring) + 15) & ~((uintptr_t)15))
+#define JRT_STACK_START (JRT_MEM_PHYS + JRT_MEM_SIZE)
+#define JRT_HEAP_START ((JRT_MEM_PHYS + sizeof(struct mpsc_ring) + 15) & ~((uintptr_t)15))
 
-#define TOJRT_RING_SIZE ((JRT_STACK_START - TOJRT_RING_ADDR) - 1)
+#define TOJRT_RING_SIZE ((JRT_HEAP_START - TOJRT_RING_ADDR) - 1)
 
 #ifdef AUTOGEN_HEADER
 #include <stdio.h>
