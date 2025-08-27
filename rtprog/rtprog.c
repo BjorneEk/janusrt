@@ -17,6 +17,8 @@
 #include "timer.h"
 #include "irq.h"
 #include "uart.h"
+#include "cpu.h"
+#include "kerror.h"
 
 void periodic_func(void);
 
@@ -31,13 +33,27 @@ void timer_init(void)
 	set_timer_func(periodic_func);
 	start_periodic_task_freq(1);
 }
+static void sync_recover(enum panic_reason r)
+{
+	uart_puts("[JRT RECOVERY] ");
+	uart_puts(panic_str(r));
+	uart_puts("\n");
+	if (r == USER_PANIC)
+		return;
+	uart_puts("reason: ");
+	uart_puts(jrt_strerror());
+	if (jrt_errno() == JRT_EASSERT)
+		jrt_print_assert();
+	uart_puts("\n");
+	halt();
+}
 
 void jrt_main(void)
 {
 	uint32_t i;
 
 	uart_init();
-
+	sync_set_recover_handler(sync_recover);
 	irq_init();
 	timer_init();
 	//u8 *n = 0;

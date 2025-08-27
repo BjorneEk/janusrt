@@ -2,6 +2,7 @@
 // Author: Gustaf Franzen <gustaffranzen@icloud.com>
 
 #include "uart.h"
+#include "cpu.h"
 
 /* forward */
 static const char *ec_str(u64 ec);
@@ -165,15 +166,29 @@ const char *ifsc_str(u32 fsc)
 	default:   return "IFSC(?)";
 	}
 }
+static void norecover(enum panic_reason r)
+{
+	halt();
+}
+
+sync_recover_t g_sync_recover = norecover;
+
+void sync_set_recover_handler(sync_recover_t recover)
+{
+	g_sync_recover = recover;
+}
 
 /* C entry called from EL1h Sync vector */
 void sync_exception_entry(u64 esr, u64 elr, u64 far)
 {
 	u64 ec;
 	u64 il;
+	u64 iss;
+	u32 imm16;
 
 	ec = (esr >> 26) & 0x3Fu;
 	il = (esr >> 25) & 0x1u;
+	iss =  esr & 0x01ffffff;
 
 	uart_puts("[SYNC] ESR=0x"); print_hex64(esr);
 	uart_puts(" ELR=0x"); print_hex64(elr);
@@ -194,14 +209,20 @@ void sync_exception_entry(u64 esr, u64 elr, u64 far)
 	case 0x2C:	/* SError reported as sync (rare) */
 		uart_puts("SError reported synchronously\n");
 		break;
+	case 0x3C:
+		imm16 = iss & 0xFFFF;
+		uart_puts("[BRK] type=");
+		uart_puts(panic_str(imm16));
+		uart_puts(" ELR=0x"); print_hex64(elr);
+		uart_puts("\n");
+		g_sync_recover(imm16);
+		return;
 	default:
 		uart_puts("Unhandled SYNC class\n");
 		break;
 	}
 
 	uart_puts("Halting.\n");
-	for (;;) {
-		asm volatile("wfe" ::: "memory");
-	}
+	halt();
 }
 
