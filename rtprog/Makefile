@@ -11,8 +11,10 @@ OBJCOPY := $(NONE_CROSS)objcopy
 #ROOTFS_DIR ?= ../rootfs
 #SHARED_DIR ?= ../shared
 
-SRC := rtprog.c boot.S psci.S timer_aarch64.S irq.c timer.c uart.c sync.c
-OBJ := rtprog.o boot.o psci.o timer_aarch64.o irq.o timer.o uart.o sync.o
+SRC := rtprog.c boot.S psci.S timer_aarch64.S \
+	irq.c timer.c uart.c sync.c alloc.c kerror.c
+OBJ := rtprog.o boot.o psci.o timer_aarch64.o \
+	irq.o timer.o uart.o sync.o alloc.o kerror.o
 ELF := rtprog.elf
 
 #BIN := $(ROOTFS_DIR)/rt.bin
