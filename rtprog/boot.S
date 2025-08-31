@@ -79,6 +79,11 @@ el1_entry:
 	str     xzr, [x0], #8
 	b       1b
 2:
+	//enable FP/ASIMD
+	mrs     x0, cpacr_el1
+	orr     x0, x0, #(3 << 20)     // FPEN=0b11
+	msr     cpacr_el1, x0
+	isb
 	// Jump to main
 	bl	jrt_main
 
