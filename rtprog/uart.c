@@ -1,7 +1,7 @@
 
 // Author Gustaf Franzen <gustaffranzen@icloud.com>
 #include "uart.h"
-void uart_putc(char c)
+__attribute__((used)) void uart_putc(char c)
 {
 	volatile u32 *fr;
 	volatile u32 *dr;
@@ -15,7 +15,7 @@ void uart_putc(char c)
 	*dr = (u32)(u8)c;
 }
 
-void uart_puts(const char *s)
+__attribute__((used)) void uart_puts(const char *s)
 {
 	const char *p;
 
@@ -24,7 +24,7 @@ void uart_puts(const char *s)
 		uart_putc(*p++);
 }
 
-void uart_putu64(uint64_t v)
+__attribute__((used)) void uart_putu64(uint64_t v)
 {
 	char buf[21];
 	int i;
@@ -44,7 +44,7 @@ void uart_putu64(uint64_t v)
 	uart_puts(&buf[i+1]);
 }
 
-void uart_putu32(uint32_t v)
+__attribute__((used)) void uart_putu32(uint32_t v)
 {
 	uart_putu64(v);
 }
@@ -54,7 +54,7 @@ static char tohex(int i)
 		return '0' + i;
 	return 'A' + (i - 10);
 }
-void uart_puthex(uint64_t v)
+__attribute__((used)) void uart_puthex(uint64_t v)
 {
 	char buf[17];
 	int i;
