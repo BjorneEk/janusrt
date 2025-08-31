@@ -49,9 +49,9 @@ void irq_dispatch(u32 intid)
 {
 	irq_fn_t f;
 
-	uart_puts("irq (");
-	uart_putu32(intid);
-	uart_puts(")\n");
+	//uart_puts("irq (");
+	//uart_putu32(intid);
+	//uart_puts(")\n");
 
 	if (intid > 1020) {
 		irq_default_handler(intid);
@@ -59,9 +59,9 @@ void irq_dispatch(u32 intid)
 	}
 	f = (intid < 32) ? ppi_table[intid] : spi_table[intid - 32];
 
-	uart_puts("irq dispatch (");
-	uart_putu64((u64)(uintptr_t)f);
-	uart_puts(")\n");
+	//uart_puts("irq dispatch (");
+	//uart_putu64((u64)(uintptr_t)f);
+	//uart_puts(")\n");
 
 	if (f)
 		f();
