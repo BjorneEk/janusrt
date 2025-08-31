@@ -21,8 +21,12 @@
 
 	typedef uintptr_t uptr;
 	typedef intptr_t  sptr;
+	typedef unsigned __int128 u128;
 #endif
 
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)-1)
+#endif
 /* ---------- Alignment + packing macros ---------- */
 
 /* Align a type or object to N bytes */

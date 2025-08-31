@@ -10,7 +10,7 @@
 #define JRT_HEAP_START ((JRT_MEM_PHYS + sizeof(struct mpsc_ring) + 15) & ~((uintptr_t)15))
 
 #define TOJRT_RING_SIZE ((JRT_HEAP_START - TOJRT_RING_ADDR) - 1)
-
+#define JRT_HEAP_SIZE ((JRT_STACK_START - JRT_HEAP_START) - 1)
 #ifdef AUTOGEN_HEADER
 #include <stdio.h>
 #include <string.h>
@@ -35,6 +35,8 @@ int main(void)
 	printf("#define JRT_STACK_START (0x%llx)\n", JRT_STACK_START);
 	printf("#define TOJRT_RING_SIZE (0x%llx)\n", TOJRT_RING_SIZE);
 
+	printf("#define JRT_HEAP_START (0x%llx)\n", JRT_HEAP_START);
+	printf("#define JRT_HEAP_SIZE (0x%llx)\n", JRT_HEAP_SIZE);
 	printf("\n#endif /* %s */\n", guard);
 }
 #endif
