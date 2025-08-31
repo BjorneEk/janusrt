@@ -19,6 +19,11 @@
 #include "uart.h"
 #include "cpu.h"
 #include "kerror.h"
+#include "sched.h"
+#include "alloc.h"
+
+sched_t G_SCHED;
+alloc_t G_ALLOC;
 
 void periodic_func(void);
 
@@ -48,16 +53,33 @@ static void sync_recover(enum panic_reason r)
 	halt();
 }
 
+static void jrt_loop(void)
+{
+	G_SCHED.pid = 0;
+
+	uart_puts("enter loop\n");
+	for (;;) {
+		while (heap_empty(&G_SCHED.ready))
+			wfe();
+		sched(&G_SCHED);
+	}
+}
 void jrt_main(void)
 {
 	uint32_t i;
 
+	interrupts_disable_all();
 	uart_init();
 	sync_set_recover_handler(sync_recover);
 	irq_init();
+
+	alloc_init(&G_ALLOC, (void*)(uintptr_t)JRT_HEAP_START, JRT_HEAP_SIZE);
+	sched_init(&G_SCHED);
+
+	interrupts_enable_all();
 	timer_init();
-	//u8 *n = 0;
-	//*n = 1;
+
+	jrt_loop();
 
 	uart_puts("a number: ");
 	uart_putu32(69);
@@ -88,17 +110,44 @@ static inline int mpsc_pop(struct mpsc_ring *r, u8 out[16])
 	return 0;
 }
 
+void schedule_req(u64 pc, u64 mem_req)
+{
+	u32 pid;
+	void *mem;
+
+	mem = alloc(&G_ALLOC, mem_req);
+
+	if (!mem)
+		KERNEL_PANIC(JRT_ENOMEM);
+
+	pid = shed_new_proc(
+		&G_SCHED,
+		pc,
+		mem,
+		mem_req,
+		0,
+		jrt_loop);
+	uart_puts("[SCHED] ");
+	uart_putu32(pid);
+	uart_puts(": (");
+	uart_putu64(pc);
+	uart_puts(", ");
+	uart_putu64(mem_req);
+	uart_puts(")\n");
+
+	sched_sched_proc(&G_SCHED, pid);
+}
+
 static struct mpsc_ring *g_ipc_ring = (void*)TOJRT_RING_ADDR;
 void periodic_func(void)
 {
-	u8 data[16];
+	jrt_sched_req_t sr;
 	int budget;
-	uart_puts("periodic call\n");
-	for (budget = 0; budget < 64; budget++) {
-		if (mpsc_pop(g_ipc_ring, data) != 0)
+	//uart_puts("periodic call\n");
+	for (budget = 0; budget < 3; budget++) {
+		if (mpsc_pop(g_ipc_ring, sr.b) != 0)
 			break;
-		uart_puts((char*)data);
-		uart_puts("\n");
+		schedule_req(sr.pc, sr.mem_req);
 	}
 	//uart_puts("periodic call\n");
 }
