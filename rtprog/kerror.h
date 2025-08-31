@@ -4,6 +4,7 @@
 #define _KERROR_H_
 
 #include "types.h"
+#include "cpu.h"
 
 typedef enum jrt_err {
 	JRT_ENOMEM,
