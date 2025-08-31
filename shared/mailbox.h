@@ -13,10 +13,15 @@
 #define TOJRT_SIZE   (1u << TOJRT_ORDER)
 #define TOJRT_MASK   (TOJRT_SIZE - 1)
 
-struct JRT_PACKED tojrt_rec {
+typedef union JRT_PACKED tojrt_rec {
 	u8 b[16];
-};
-JRT_STATIC_ASSERT(sizeof(struct tojrt_rec) == 16, "rec16_size");
+	struct {
+		u64 pc;
+		u64 mem_req;
+	};
+} jrt_sched_req_t;
+
+JRT_STATIC_ASSERT(sizeof(jrt_sched_req_t) == 16, "rec16_size");
 
 
 /* ====== Ring structure (shared) ======
@@ -30,7 +35,7 @@ struct JRT_ALIGNED(JRT_CACHELINE) mpsc_ring {
 	u8 _pad0[JRT_CACHELINE - 8]; /* avoid false sharing */
 
 	u8 flags[TOJRT_SIZE];       /* one byte per slot: 0 empty, 1 full */
-	struct tojrt_rec data[TOJRT_SIZE];
+	jrt_sched_req_t data[TOJRT_SIZE];
 };
 
 #endif

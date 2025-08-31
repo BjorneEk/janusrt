@@ -25,6 +25,37 @@
 //	uint64_t entry_phys;
 //	uint64_t core_id;
 //};
+int start_kernel(int fd, uintptr_t entry, uint64_t core_id)
+{
+
+	struct rtcore_start_args args = {
+		.entry_user = entry,
+		.core_id = core_id
+	};
+
+	printf("Starting CPU 3 at user address: 0x%lx...\n", args.entry_user);
+	if (ioctl(fd, RTCORE_IOCTL_START_CPU, &args) < 0) {
+		perror("ioctl cpu_on");
+		return 1;
+	}
+	printf("Started CPU 3 at user address: 0x%lx\n", args.entry_user);
+}
+
+int sched_prog(int fd, uintptr_t entry, uint64_t mem_req)
+{
+
+	printf("Scheduling program at user address: 0x%lx...\n", entry);
+	struct rtcore_sched_args args = {
+		.entry_user = entry,
+		.mem_req = mem_req
+	};
+	printf("Scheduling program at user address: 0x%lx...\n", args.entry_user);
+	if (ioctl(fd, RTCORE_IOCTL_SCHED_PROG, &args) < 0) {
+		perror("ioctl sched_prog");
+		return 1;
+	}
+
+}
 
 int main(int argc, char *argv[])
 {
@@ -81,36 +112,15 @@ int main(int argc, char *argv[])
 		close(fd_in);
 		return 1;
 	}
-
+	printf("here\n");
 	memcpy(jrt_mem, prog, st.st_size);
 	munmap(prog, st.st_size);
 	close(fd_in);
 
-
-
-	struct rtcore_start_args args = {
-		.entry_user = (uintptr_t)jrt_mem,
-		.core_id = 3
-	};
-
-	printf("Starting CPU 3 at user address: 0x%lx...\n", args.entry_user);
-	if (ioctl(fd, RTCORE_IOCTL_START_CPU, &args) < 0) {
-		perror("ioctl cpu_on");
-		return 1;
-	}
-
-	printf("Started CPU 3 at user address: 0x%lx\n", args.entry_user);
-	struct rtcore_sched_args args2 = {
-		.entry_user = (uintptr_t)jrt_mem,
-	};
-	for (int i = 0; i < 1000; ++i) {
-		//sleep(1);
-		if (ioctl(fd, RTCORE_IOCTL_SCHED_PROG, &args2) < 0) {
-			perror("ioctl sched_prog");
-			return 1;
-		}
-	}
-	printf("DONE\n");
-
+	if (argc > 2) {
+		printf("here\n");
+		sched_prog(fd, (uintptr_t)jrt_mem, 0x10000);
+	} else
+		start_kernel(fd, (uintptr_t)jrt_mem, 3);
 	return 0;
 }

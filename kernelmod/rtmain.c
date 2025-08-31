@@ -203,7 +203,7 @@ static u32 mpsc_fetch_add_head_relaxed(u32 *p)
 }
 
 static int mpsc_push(struct mpsc_ring *r,
-	const struct tojrt_rec *rec,
+	const jrt_sched_req_t *rec,
 	int try_only)	/* 0 = spin, 1 = return -EAGAIN */
 {
 	u32		t;
@@ -239,8 +239,9 @@ static int mpsc_push(struct mpsc_ring *r,
 static long rtcore_sched_prog(struct file *file, unsigned long arg)
 {
 	rtcore_ctx_t *ctx;
-	start_cpu_args_t args;
+	sched_prog_args_t args;
 	phys_addr_t entry_phys;
+	jrt_sched_req_t req;;
 
 	ctx = file->private_data;
 
@@ -285,9 +286,16 @@ static long rtcore_sched_prog(struct file *file, unsigned long arg)
 	//pr_info("rtcore: starting CPU %llu at phys 0x%pa (VA 0x%llx)\n",
 	//	args.core_id, &entry_phys, args.entry_user);
 
-	char msg[16];
-	snprintf(msg, sizeof(msg), "ep:%llx", entry_phys);
-	int r = mpsc_push(tojrt_ring, (struct tojrt_rec*)msg, 0);
+	//char msg[16];
+	req.pc = entry_phys;
+	req.mem_req = args.mem_req;
+	//snprintf(msg, sizeof(msg), "ep:%llx", entry_phys);
+	pr_info("rtcore: shed beg\n");
+	rtcore_icache_sync_phys_range(
+		entry_phys,
+		ctx->user_len - (args.entry_user - ctx->user_base));
+
+	int r = mpsc_push(tojrt_ring, &req, 0);
 	pr_info("rtcore: shed %i\n", r);
 	return 0;
 }
