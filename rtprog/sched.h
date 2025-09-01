@@ -5,6 +5,7 @@
 
 #include "types.h"
 #include "heap.h"
+#include "mmu.h"
 
 typedef enum task_state {
 	PROC_READY,
@@ -21,6 +22,7 @@ typedef struct ctx {
 
 	u128 vregs[32];
 	u32 fpsr, fpcr;
+	mmu_map_t mmap;
 } ctx_t;
 
 typedef struct process {
@@ -46,7 +48,7 @@ typedef struct process {
 #define MAX_PROC (0x1000)
 
 typedef struct sched {
-	proc_t p0;
+	proc_t p0; //kernel proc
 	proc_t pb[MAX_PROC];
 	proc_t *free_proc[MAX_PROC];
 	size_t nfree_proc;
@@ -80,6 +82,7 @@ static inline void sched_init(sched_t *s)
 	s->pid = 0;
 	s->p0.pid = 0;
 	s->p0.first = 0;
+	s->p0.ctx.mmap = kern_map_create(0);
 }
 
 

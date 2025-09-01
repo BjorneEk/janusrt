@@ -9,7 +9,7 @@ PHDRS {
 
 SECTIONS {
 	. = JRT_CODE_PHYS;
-
+	__kernel_start = .;
 	.text : {
 		KEEP(*(.text._start))
 		*(.text*) *(.init*) *(.fini*)
@@ -21,6 +21,6 @@ SECTIONS {
 		*(.bss*) *(COMMON)
 		__bss_end = .;
 	} :data
-
+	__kernel_end = .;
 	/DISCARD/ : { *(.note*) *(.comment*) }
 }
