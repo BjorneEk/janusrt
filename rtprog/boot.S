@@ -8,6 +8,7 @@
 	.extern jrt_main
 	.extern psci_cpu_off
 	.extern irq_dispatch
+	.extern irq_el1
 
 _start:
 	// switch to EL1
@@ -104,6 +105,16 @@ serr_spin:
 bad_irq_spin:
 	wfe
 	b	bad_irq_spin
+//new interrupt layout
+// 1. store mmap
+// 2. switch to kernel mmap
+// 1. store ctx_t on (kernel) stack,
+// defer, passing (ctx_t *ctx, u64 *eret_addr)
+// then, handler can perform context switch by simply editing these
+// restore ctx,
+// switch back mmap
+// eret
+//
 
 // ----------- Syncronous exception ---------------------------------------------
 .text
@@ -193,7 +204,7 @@ irq_common_el1:
 vector_table:
 	b	sync_el1h          // EL1t Sync
 	.balign 128
-	b	irq_common_el1     // EL1t IRQ
+	b	irq_el1     // EL1t IRQ
 	.balign 128
 	b	fiq_spin           // EL1t FIQ
 	.balign 128
@@ -202,7 +213,7 @@ vector_table:
 
 	b	sync_el1h          // EL1h Sync
 	.balign 128
-	b	irq_common_el1     // EL1h IRQ
+	b	irq_el1     // EL1h IRQ
 	.balign 128
 	b	fiq_spin           // EL1h FIQ
 	.balign 128
@@ -211,7 +222,7 @@ vector_table:
 
 	b	sync_el1h          // EL0 AArch64 Sync
 	.balign 128
-	b	irq_common_el1     // EL0 AArch64 IRQ
+	b	irq_el1     // EL0 AArch64 IRQ
 	.balign 128
 	b	fiq_spin
 	.balign 128
@@ -220,7 +231,7 @@ vector_table:
 
 	b	sync_el1h          // EL0 AArch32 Sync
 	.balign 128
-	b	irq_common_el1     // EL0 AArch32 IRQ
+	b	irq_el1     // EL0 AArch32 IRQ
 	.balign 128
 	b	fiq_spin
 	.balign 128

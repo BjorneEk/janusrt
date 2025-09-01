@@ -13,10 +13,10 @@ OBJCOPY := $(NONE_CROSS)objcopy
 
 SRC := rtprog.c boot.S psci.S timer_aarch64.S \
 	irq.c timer.c uart.c sync.c alloc.c kerror.c \
-	sched.c heap.c ctx_switch.S mmu.c mmu_el1.S
+	sched.c heap.c ctx_switch.S mmu.c mmu_el1.S irq_el1.S
 OBJ := rtprog.o boot.o psci.o timer_aarch64.o \
 	irq.o timer.o uart.o sync.o alloc.o kerror.o \
-	sched.o heap.o ctx_switch.o mmu.o mmu_el1.o
+	sched.o heap.o ctx_switch.o mmu.o mmu_el1.o irq_el1.o
 ELF := rtprog.elf
 RELOC  := $(ELF:.elf=.o)
 
