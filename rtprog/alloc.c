@@ -130,7 +130,54 @@ void *alloc(alloc_t *a, size_t len)
 
 	return BLOCK_PTR(best);
 }
+static u64 get_align(void *p, u64 align)
+{
+	return ((uintptr_t)p & (align - 1));
+}
 
+void *aligned_alloc(alloc_t *a, size_t len, u64 align)
+{
+	size_t xlen;
+	ablock_t *best,
+		 *curr;
+	u64 ca;
+	xlen = len + USED_HEADER_SIZE;
+	curr = a->free;
+	best = NULL;
+
+	// find best fit
+	while (curr != a->end) {
+		if (curr->next >= xlen) {
+			ca = get_align(BLOCK_PTR(curr), align);
+			// already aligned
+			if ((ca == 0) && (!best || best->next > curr->next) ) {
+				best = curr;
+			// can fit an aligned
+			} else if (curr->next >= ((align - ca) + xlen)) {
+				best = curr;
+			}
+		}
+		curr = nfree(curr);
+	}
+
+	if (!best)
+		return NULL;
+
+	ca = get_align(BLOCK_PTR(best), align);
+	// need to split of unaligned begining
+	if (ca != 0) {
+		split(a, best, align - ca);
+		best = next(best);
+	}
+	// split block to size
+	if ((best->next - xlen) >= MIN_SPLIT_THRESHOLD)
+		split(a, best, xlen);
+
+	// cut out block from free list
+	use_block(a, best);
+
+	return BLOCK_PTR(best);
+}
 void free(alloc_t *a, void *ptr)
 {
 	ablock_t *b,
