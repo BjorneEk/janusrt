@@ -131,7 +131,7 @@ static inline int mpsc_pop(struct mpsc_ring *r, u8 out[TOJRT_REC_SIZE])
 	return 0;
 }
 
-void schedule_req(u64 pc, u64 mem_req)
+void schedule_req(u64 pc, u64 prog_size, u64 mem_req)
 {
 	u32 pid;
 	void *mem;
@@ -141,9 +141,10 @@ void schedule_req(u64 pc, u64 mem_req)
 	if (!mem)
 		KERNEL_PANIC(JRT_ENOMEM);
 
-	pid = shed_new_proc(
+	pid = sched_new_proc(
 		&G_SCHED,
 		pc,
+		prog_size,
 		mem,
 		mem_req,
 		0,
@@ -152,6 +153,8 @@ void schedule_req(u64 pc, u64 mem_req)
 	uart_putu32(pid);
 	uart_puts(": (");
 	uart_putu64(pc);
+	uart_puts(", ");
+	uart_putu64(prog_size);
 	uart_puts(", ");
 	uart_putu64(mem_req);
 	uart_puts(")\n");
@@ -168,7 +171,7 @@ void periodic_func(void)
 	for (budget = 0; budget < 3; budget++) {
 		if (mpsc_pop(g_ipc_ring, sr.b) != 0)
 			break;
-		schedule_req(sr.pc, sr.mem_req);
+		schedule_req(sr.pc, sr.prog_size, sr.mem_req);
 	}
 	//uart_puts("periodic call\n");
 }

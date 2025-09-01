@@ -91,9 +91,10 @@ proc_t *shed_alloc_proc(sched_t *sc);
 void sched_sched_proc(sched_t *sc, u32 pid);
 
 typedef void (*exit_func_t)(void);
-u32 shed_new_proc(
+u32 sched_new_proc(
 	sched_t *sc,
 	u64 pc,
+	u64 code_size,
 	void *mem,
 	size_t mem_size,
 	u64 deadline,

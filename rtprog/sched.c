@@ -40,16 +40,17 @@ void sched_free_proc(sched_t *sc, u32 pid)
 	sc->free_proc[sc->nfree_proc++] = p;
 }
 
-u32 shed_new_proc(
+u32 sched_new_proc(
 	sched_t *sc,
 	u64 pc,
+	u64 code_size,
 	void *mem,
 	size_t mem_size,
 	u64 deadline,
 	exit_func_t exit)
 {
 	proc_t *p;
-
+	static u16 asid = 1;
 	p = sched_alloc_proc(sc);
 	if (!p)
 		KERNEL_PANIC(JRT_ENOMEM);
@@ -58,7 +59,9 @@ u32 shed_new_proc(
 	p->ctx.sp = (uintptr_t)mem + mem_size;
 	// align
 	p->ctx.sp &= ~((uintptr_t)15);
-	p->ctx.pc = pc;
+	//p->ctx.pc = pc;
+	//mmu translates 0->pc
+	p->ctx.pc = 0;
 	memset(p->ctx.x, 0, 31 * sizeof(u64));
 
 	// set default args for:
@@ -69,6 +72,7 @@ u32 shed_new_proc(
 	// final link
 	p->ctx.x[30] = (uintptr_t)exit;
 
+	p->ctx.mmap = proc_map_create(pc, code_size, asid++);
 	p->first = 1;
 	p->mem = mem;
 	p->mem_size = mem_size;
@@ -131,6 +135,7 @@ void sched(sched_t *sc)
 		uart_pctx(&c->ctx);
 		uart_puts("TO:\n");
 		uart_pctx(&p->ctx);
+		mmu_map_switch(&p->ctx.mmap);
 		load_pstate(&p->ctx);
 	}
 }
