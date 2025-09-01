@@ -170,6 +170,17 @@ static inline void map_uart(pt_root_t r)
 	map_range_pages(r, UART_PA_BASE, UART_PA_BASE, UART_PA_SIZE, PTE_DEV_RW_G);
 }
 
+static inline void map_gic(pt_root_t r)
+{
+	// Distributor
+	map_range_pages(r, GICD_PA_BASE, GICD_PA_BASE, GICD_PA_SIZE, PTE_DEV_RW_G);
+
+	// Redistributors: one 128 KiB frame per CPU starting at GICR_PA_BASE0
+	for (unsigned i = 0; i < GICR_NUM_CPUS; ++i) {
+		uint64_t base = GICR_PA_BASE0 + (uint64_t)i * GICR_FRAME_SIZE;
+		map_range_pages(r, base, base, GICR_FRAME_SIZE, PTE_DEV_RW_G);
+	}
+}
 // ---------- Builders ----------
 
 // Per-process map:
@@ -206,6 +217,7 @@ void build_kernel_map(pt_root_t r)
 	map_range_pages(r, CODE_0, CODE_0, (MEM_END + 1ULL) - CODE_0, PTE_KERN_RWX);
 
 	map_uart(r);
+	map_gic(r);
 }
 
 

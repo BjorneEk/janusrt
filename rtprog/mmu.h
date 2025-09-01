@@ -22,8 +22,19 @@ extern char __kernel_end[];
 #define MEM_0            JRT_MEM_PHYS
 #define MEM_END          (JRT_MEM_PHYS + (JRT_MEM_SIZE - 1))
 
+// ===== UART MMIO
 #define UART_PA_BASE     UART_BASE
 #define UART_PA_SIZE     0x1000ULL
+
+// ===== GICv3 MMIO (QEMU virt) =====
+#define GICD_PA_BASE      0x08000000ULL
+#define GICD_PA_SIZE      0x00010000ULL   // 64 KiB distributor
+
+#define GICR_PA_BASE0     0x080A0000ULL   // first redistributor frame
+#define GICR_FRAME_SIZE   0x00020000ULL   // 128 KiB per CPU (RD + SGI/PPI)
+#ifndef GICR_NUM_CPUS
+#define GICR_NUM_CPUS     4               // set to your CPU count
+#endif
 // ==== PTE / descriptor bits (AArch64, 4 KiB) ====
 
 // [1:0]
