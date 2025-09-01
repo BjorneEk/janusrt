@@ -5,6 +5,35 @@
 
 #include "rtcore.h"
 
+/* PA */
+/*
+ * 0x51F m_n
+ *       m_3
+ *       m_2
+ *       m_1
+ *       m_0    process mem [m_a,m_(a+1)]
+ * 0x510 M	kernel mem [M,m_0]
+ * 0x50F c_n
+ *       c_3
+ *       c_2
+ *       c_1	processes [c_a, c_(a+1)]
+ * 0x500 c_0	kernel [c_0-c_1]
+ */
+/* VA */
+/*
+ * KOFF+0x1FFFFFF  m_n
+ *                 m_3
+ *                 m_2
+ *                 m_1
+ *                 m_0
+ *  KOFF+0x1000000 M
+ *                 k_0
+ *  KOFF           k   kernel [k, k_0]
+ *  0x500          c_0
+ *  0x0            c   process [c, c_0]
+ */
+
+
 #define TOJRT_RING_ADDR (JRT_MEM_PHYS)
 #define JRT_STACK_START (JRT_MEM_PHYS + JRT_MEM_SIZE)
 #define JRT_HEAP_START ((JRT_MEM_PHYS + sizeof(struct mpsc_ring) + 15) & ~((uintptr_t)15))

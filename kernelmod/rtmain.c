@@ -289,6 +289,7 @@ static long rtcore_sched_prog(struct file *file, unsigned long arg)
 	//char msg[16];
 	req.pc = entry_phys;
 	req.mem_req = args.mem_req;
+	req.prog_size = ctx->user_len - (args.entry_user - ctx->user_base);
 	//snprintf(msg, sizeof(msg), "ep:%llx", entry_phys);
 	pr_info("rtcore: shed beg\n");
 	rtcore_icache_sync_phys_range(
