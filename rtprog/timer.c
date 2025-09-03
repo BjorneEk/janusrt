@@ -1,6 +1,112 @@
 
 // Author Gustaf Franzen <gustaffranzen@icloud.com>
 #include "timer.h"
+
+
+static u64 g_cntfrq;
+
+
+void timebase_init(void)
+{
+	g_cntfrq = sys_mrs_cntfrq();
+}
+
+u64 time_now_ticks(void)
+{
+	return sys_mrs_cntpct();
+}
+
+u64 ticks_from_ns(u64 ns)
+{
+	u64 sec, rem, t, num;
+
+	sec = ns / 1000000000ULL;
+	rem = ns % 1000000000ULL;
+
+	t = sec * g_cntfrq;
+
+	// rem*g_cntfrq fits in 64-bit (<= ~1e18 for typical frq), then divide by 1e9
+	num = rem * g_cntfrq + 500000000ULL;   // +0.5e9 for rounding
+	t += num / 1000000000ULL;
+
+	return t;
+}
+
+u64 ticks_from_us(u64 us)
+{
+	u64 sec, rem, t, num;
+
+	sec = us / 1000000ULL;
+	rem = us % 1000000ULL;
+
+	t = sec * g_cntfrq;
+
+	num = rem * g_cntfrq + 500000ULL;      // +0.5e6 for rounding
+	t += num / 1000000ULL;
+
+	return t;
+}
+
+u64 ns_from_ticks(u64 t)
+{
+	u64 sec, rem, ns, num;
+
+	sec = t / g_cntfrq;
+	rem = t % g_cntfrq;
+
+	ns = sec * 1000000000ULL;
+
+	// rem*1e9 can be up to ~1e9*1e9 = 1e18 (fits in 64-bit)
+	num = rem * 1000000000ULL;
+	ns += num / g_cntfrq;
+
+	return ns;
+}
+
+u64 us_from_ticks(u64 t)
+{
+	u64 sec, rem, us, num;
+
+	sec = t / g_cntfrq;
+	rem = t % g_cntfrq;
+
+	us = sec * 1000000ULL;
+	num = rem * 1000000ULL;
+	us += num / g_cntfrq;
+
+	return us;
+}
+
+u64 time_now_ns(void)
+{
+	return ns_from_ticks(time_now_ticks());
+}
+
+u64 time_now_us(void)
+{
+	return us_from_ticks(time_now_ticks());
+}
+
+u64 timer_schedule_at_ticks(u64 deadline_ticks)
+{
+	u64 now;
+
+	now = time_now_ticks();
+	if ((s64)(deadline_ticks - now) <= 0) {
+		deadline_ticks = now + 1;       // nudge into the future by 1 tick
+	}
+
+	// Program compare first, then enable+unmask
+	sys_msr_cntp_cval(deadline_ticks);
+	// CNTP_CTL: bit0 ENABLE, bit1 IMASK (0=unmask), bit2 ISTATUS (RO)
+	sys_msr_cntp_ctl( (1u<<0) /*ENABLE*/ | (0u<<1) /*IMASK=0*/ );
+
+	asm volatile("isb");
+	return deadline_ticks;
+}
+
+
+
 static u64	g_next_cval;      /* absolute next deadline (CNTPCT units) */
 static u64	g_period_ticks;   /* period in ticks */
 
