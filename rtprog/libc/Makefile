@@ -4,7 +4,7 @@
 CC := $(NONE_CROSS)gcc
 AR := $(NONE_CROSS)ar
 
-SRC := memcpy.c memset.c
+SRC := memcpy.c memset.c memcmp.c
 OBJ := $(patsubst %.c,%.o,$(patsubst %.S,%.o,$(SRC)))
 
 
