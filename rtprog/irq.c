@@ -2,10 +2,10 @@
 // Author Gustaf Franzen <gustaffranzen@icloud.com>
 #include "irq.h"
 #include "uart.h"
+#include "sched.h"
 
 irq_fn_t spi_table[1020-32]; /* SPIs 32..1019 */
 irq_fn_t ppi_table[32];      /* 0..31 */
-
 
 void irq_register_ppi(u32 intid, irq_fn_t fn)  /* intid < 32 */
 {
@@ -37,6 +37,8 @@ void irq_init(void)
 {
 	int i;
 
+	//irq_stack_init();
+
 	for (i = 0; i < 1020; ++i) {
 		if (i < 32)
 			irq_register_ppi(i, (irq_fn_t)0);
@@ -45,13 +47,14 @@ void irq_init(void)
 	}
 }
 
-void irq_dispatch(u32 intid)
+void irq_dispatch(ctx_t *ctx, u32 intid)
 {
 	irq_fn_t f;
 
 	//uart_puts("irq (");
 	//uart_putu32(intid);
-	//uart_puts(")\n");
+	//uart_puts(") ctx:\n");
+	//uart_dump_ctx(ctx);
 
 	if (intid > 1020) {
 		irq_default_handler(intid);
@@ -64,6 +67,6 @@ void irq_dispatch(u32 intid)
 	//uart_puts(")\n");
 
 	if (f)
-		f();
+		f(ctx);
 }
 

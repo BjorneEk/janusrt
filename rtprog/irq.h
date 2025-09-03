@@ -4,8 +4,8 @@
 #define _IRQ_H_
 
 #include "types.h"
-
-typedef void (*irq_fn_t)(void);
+#include "sched.h"
+typedef void (*irq_fn_t)(ctx_t*);
 
 void irq_init(void);
 void irq_register_ppi(u32 intid, irq_fn_t fn);
