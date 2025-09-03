@@ -172,12 +172,14 @@ static inline void map_uart(pt_root_t r)
 
 static inline void map_gic(pt_root_t r)
 {
+	u64 base;
+	unsigned i;
 	// Distributor
 	map_range_pages(r, GICD_PA_BASE, GICD_PA_BASE, GICD_PA_SIZE, PTE_DEV_RW_G);
 
 	// Redistributors: one 128 KiB frame per CPU starting at GICR_PA_BASE0
-	for (unsigned i = 0; i < GICR_NUM_CPUS; ++i) {
-		uint64_t base = GICR_PA_BASE0 + (uint64_t)i * GICR_FRAME_SIZE;
+	for (i = 0; i < GICR_NUM_CPUS; ++i) {
+		base = GICR_PA_BASE0 + (u64)i * GICR_FRAME_SIZE;
 		map_range_pages(r, base, base, GICR_FRAME_SIZE, PTE_DEV_RW_G);
 	}
 }
@@ -401,7 +403,7 @@ static inline void run_visit(u64 va, u64 pa, u64 size)
 
 static void walk_level(int level, u64 *table, u64 va_base)
 {
-	const u64 slot_span;
+	const u64 slot_span = level_span_bytes(level);
 	u64	va_slot,
 		next_pa,
 		*next,
@@ -409,8 +411,6 @@ static void walk_level(int level, u64 *table, u64 va_base)
 		pa,
 		d;
 	int i, k;
-
-	slot_span = level_span_bytes(level);
 
 	for (i = 0; i < ENTRIES_PER_TABLE; ++i) {
 		d = table[i];

@@ -65,34 +65,30 @@ typedef struct sched {
 #define PSR_A   (1u << 8)   // SError mask
 #define PSR_D   (1u << 9)   // Debug mask
 
+#define IRQ_MASK	(PSR_I)
+#define FIQ_MASK	(PSR_F)
+#define SERR_MASK	(PSR_A)
+#define DBG_MASK	(PSR_D)
 // M[3:0] encodings for AArch64
 #define PSR_M_EL0t  0x0u
 #define PSR_M_EL1t  0x4u
 #define PSR_M_EL1h  0x5u
 
-static inline uint64_t make_pstate_el1h(bool mask_irq, bool mask_fiq,
-					bool mask_serr, bool mask_dbg)
+static inline u64 pstate_el1h(u64 ex_mask)
 {
 	u64 p;
 	p = PSR_M_EL1h;
-	if (mask_irq)  p |= PSR_I;
-	if (mask_fiq)  p |= PSR_F;
-	if (mask_serr) p |= PSR_A;
-	if (mask_dbg)  p |= PSR_D;
+	p |= ex_mask;
 	return p;
 }
-
-static inline uint64_t make_pstate_el1t(bool mask_irq, bool mask_fiq,
-					bool mask_serr, bool mask_dbg)
+static inline u64 pstate_el1t(u64 ex_mask)
 {
 	u64 p;
 	p = PSR_M_EL1t;
-	if (mask_irq)  p |= PSR_I;
-	if (mask_fiq)  p |= PSR_F;
-	if (mask_serr) p |= PSR_A;
-	if (mask_dbg)  p |= PSR_D;
+	p |= ex_mask;
 	return p;
 }
+
 
 static inline s64 idx_to_pid(s64 i)
 {

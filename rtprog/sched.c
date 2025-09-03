@@ -52,20 +52,26 @@ u32 sched_new_proc(
 {
 	proc_t *p;
 	static u16 asid = 1;
+
 	p = sched_alloc_proc(sc);
 	if (!p)
 		KERNEL_PANIC(JRT_ENOMEM);
+
+	//clear regs
+	memset(p->ctx.x, 0, 31 * sizeof(u64));
 
 	// stack pointer and procram counter
 	p->ctx.sp = (uintptr_t)mem + mem_size;
 	// align
 	p->ctx.sp &= ~((uintptr_t)15);
-	//p->ctx.pc = pc;
+
 	//mmu translates 0->pc
 	p->ctx.pc = 0;
-	memset(p->ctx.x, 0, 31 * sizeof(u64));
-	p->ctx.pstate = make_pstate_el1h(false, true, false, false);
-	//p->ctx.pstate = 0x20000005;
+
+	// el1h, dissable all exceptions except serr
+	// serr are fatal and usefull maybe ?!?
+	p->ctx.pstate = pstate_el1h(IRQ_MASK | FIQ_MASK | DBG_MASK);
+
 	// set default args for:
 	// int start(void *mem, size_t mem_size);
 	p->ctx.x[0] = (uintptr_t)mem;
@@ -74,13 +80,16 @@ u32 sched_new_proc(
 	// final link
 	p->ctx.x[30] = (uintptr_t)exit;
 
+	// create mmap that maps code to 0:code_size
 	p->ctx.mmap = proc_map_create(pc, code_size, asid++);
+
+
 	p->first = 1;
 	p->mem = mem;
 	p->mem_size = mem_size;
 	p->eff_deadline = deadline;
 	p->abs_deadline = deadline;
-	p->state = PROC_WAITING;
+	p->state = PROC_READY;
 	return p->pid;
 }
 
@@ -115,6 +124,11 @@ void uart_dump_ctx(ctx_t *c)
 		uart_puts(", ");
 	}
 	uart_puts("\n");
+	uart_puts("asid: ");
+	uart_putu32(c->mmap.asid);
+	uart_puts("\n");
+
+	dump_map(&c->mmap);
 }
 
 void sched_switch_sync(sched_t *sc, proc_t *c, proc_t *n)
@@ -123,6 +137,7 @@ void sched_switch_sync(sched_t *sc, proc_t *c, proc_t *n)
 	store_pstate(&c->ctx);
 	sc->curr = n;
 	uart_puts("sync switch FROM:\n");
+
 	uart_dump_ctx(&c->ctx);
 	uart_puts("TO:\n");
 	uart_dump_ctx(&n->ctx);
