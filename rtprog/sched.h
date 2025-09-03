@@ -14,7 +14,7 @@ typedef enum task_state {
 	PROC_UNUSED
 } state_t;
 
-typedef struct ctx {
+typedef  struct ctx {
 	u64	x[31];
 	u64	sp;
 	u64	pc;
@@ -26,6 +26,7 @@ typedef struct ctx {
 } ctx_t;
 
 typedef struct process {
+	ctx_t ctx;
 	u32	pid;
 	state_t	state;
 	int first;
@@ -37,7 +38,6 @@ typedef struct process {
 	u64	wait_start_ns;  /* for fairness */
 	u64	wait_seq;       /* tiebreaker */
 
-	ctx_t ctx;
 
 	void *mem;
 	size_t mem_size;
@@ -49,14 +49,50 @@ typedef struct process {
 
 typedef struct sched {
 	proc_t p0; //kernel proc
+	proc_t *curr;
+	u32 pid;
 	proc_t pb[MAX_PROC];
 	proc_t *free_proc[MAX_PROC];
 	size_t nfree_proc;
 
 	heap_node_t rn[READY_MAX];
 	minheap_t ready;
-	u32 pid;
 } sched_t;
+
+// PSTATE / SPSR bits used here
+#define PSR_F   (1u << 6)   // FIQ mask
+#define PSR_I   (1u << 7)   // IRQ mask
+#define PSR_A   (1u << 8)   // SError mask
+#define PSR_D   (1u << 9)   // Debug mask
+
+// M[3:0] encodings for AArch64
+#define PSR_M_EL0t  0x0u
+#define PSR_M_EL1t  0x4u
+#define PSR_M_EL1h  0x5u
+
+static inline uint64_t make_pstate_el1h(bool mask_irq, bool mask_fiq,
+					bool mask_serr, bool mask_dbg)
+{
+	u64 p;
+	p = PSR_M_EL1h;
+	if (mask_irq)  p |= PSR_I;
+	if (mask_fiq)  p |= PSR_F;
+	if (mask_serr) p |= PSR_A;
+	if (mask_dbg)  p |= PSR_D;
+	return p;
+}
+
+static inline uint64_t make_pstate_el1t(bool mask_irq, bool mask_fiq,
+					bool mask_serr, bool mask_dbg)
+{
+	u64 p;
+	p = PSR_M_EL1t;
+	if (mask_irq)  p |= PSR_I;
+	if (mask_fiq)  p |= PSR_F;
+	if (mask_serr) p |= PSR_A;
+	if (mask_dbg)  p |= PSR_D;
+	return p;
+}
 
 static inline s64 idx_to_pid(s64 i)
 {
@@ -83,6 +119,7 @@ static inline void sched_init(sched_t *s)
 	s->p0.pid = 0;
 	s->p0.first = 0;
 	s->p0.ctx.mmap = kern_map_create(0);
+	s->curr = &s->p0;
 }
 
 
@@ -107,6 +144,9 @@ void sched_free_proc(sched_t *sc, u32 pid);
 extern void store_pstate(ctx_t *ctx);
 extern u64 load_pstate(ctx_t *ctx);
 
-void sched(sched_t *sc);
 
+void sched(sched_t *sc, void (*swp)(sched_t*,proc_t*,proc_t*));
+void sched_switch_sync(sched_t *sc, proc_t *c, proc_t *n);
+void sched_switch_irq(sched_t *sc, proc_t *c, proc_t *n);
+void uart_dump_ctx(ctx_t *c);
 #endif

@@ -24,12 +24,13 @@
 
 sched_t G_SCHED;
 alloc_t G_ALLOC;
+ctx_t *G_KERNEL_CTX;
 
-void periodic_func(void);
+void periodic_func(ctx_t *);
 
-static void timer_trampoline(void)
+static void timer_trampoline(ctx_t *c)
 {
-	timer_irq_handler();
+	timer_irq_handler(c);
 }
 
 void timer_init(void)
@@ -66,7 +67,7 @@ static void jrt_loop(void)
 	for (;;) {
 		while (heap_empty(&G_SCHED.ready))
 			wfe();
-		sched(&G_SCHED);
+		sched(&G_SCHED, sched_switch_sync);
 	}
 }
 void jrt_main(void)
@@ -91,7 +92,16 @@ void jrt_main(void)
 
 	// initialize scheduler (also creates kernel mmap)
 	sched_init(&G_SCHED);
-
+	G_KERNEL_CTX = &G_SCHED.p0.ctx;
+	uart_puts("&G_SCHED: ");
+	uart_puthex((uintptr_t)&G_SCHED);
+	uart_puts("\n&G_SCHED.curr: ");
+	uart_puthex((uintptr_t)&G_SCHED.curr);
+	uart_puts("\nG_SCHED.curr: ");
+	uart_puthex((uintptr_t)G_SCHED.curr);
+	uart_puts("\n&G_SCHED.curr->ctx: ");
+	uart_puthex((uintptr_t)&G_SCHED.curr->ctx);
+	uart_puts("\n");
 	// enable mmu with kernel (linear) mmap
 	mmu_enable(&G_SCHED.p0.ctx.mmap);
 
@@ -160,14 +170,15 @@ void schedule_req(u64 pc, u64 prog_size, u64 mem_req)
 	uart_puts(")\n");
 
 	sched_sched_proc(&G_SCHED, pid);
+	sched(&G_SCHED, sched_switch_irq);
 }
 
 static struct mpsc_ring *g_ipc_ring = (void*)TOJRT_RING_ADDR;
-void periodic_func(void)
+void periodic_func(ctx_t *ctx)
 {
 	jrt_sched_req_t sr;
 	int budget;
-	//uart_puts("periodic call\n");
+//	uart_puts("periodic call\n");
 	for (budget = 0; budget < 3; budget++) {
 		if (mpsc_pop(g_ipc_ring, sr.b) != 0)
 			break;

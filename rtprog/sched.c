@@ -40,6 +40,7 @@ void sched_free_proc(sched_t *sc, u32 pid)
 	sc->free_proc[sc->nfree_proc++] = p;
 }
 
+
 u32 sched_new_proc(
 	sched_t *sc,
 	u64 pc,
@@ -63,7 +64,8 @@ u32 sched_new_proc(
 	//mmu translates 0->pc
 	p->ctx.pc = 0;
 	memset(p->ctx.x, 0, 31 * sizeof(u64));
-
+	p->ctx.pstate = make_pstate_el1h(false, true, false, false);
+	//p->ctx.pstate = 0x20000005;
 	// set default args for:
 	// int start(void *mem, size_t mem_size);
 	p->ctx.x[0] = (uintptr_t)mem;
@@ -91,7 +93,7 @@ void sched_sched_proc(sched_t *sc, u32 pid)
 	if (heap_push(&sc->ready, p->eff_deadline, p))
 		KERNEL_PANIC(JRT_ENOMEM);
 }
-static void uart_pctx(ctx_t *c)
+void uart_dump_ctx(ctx_t *c)
 {
 	u32 i;
 	uart_puts("pc: 0x");
@@ -100,6 +102,10 @@ static void uart_pctx(ctx_t *c)
 
 	uart_puts("sp: 0x");
 	uart_puthex(c->sp);
+	uart_puts("\n");
+
+	uart_puts("pstate: 0x");
+	uart_puthex(c->pstate);
 	uart_puts("\n");
 	for (i = 0; i < 31; ++i) {
 		uart_puts("x");
@@ -111,6 +117,51 @@ static void uart_pctx(ctx_t *c)
 	uart_puts("\n");
 }
 
+void sched_switch_sync(sched_t *sc, proc_t *c, proc_t *n)
+{
+	sc->pid = n->pid;
+	store_pstate(&c->ctx);
+	sc->curr = n;
+	uart_puts("sync switch FROM:\n");
+	uart_dump_ctx(&c->ctx);
+	uart_puts("TO:\n");
+	uart_dump_ctx(&n->ctx);
+	mmu_map_switch(&n->ctx.mmap);
+	load_pstate(&n->ctx);
+}
+
+void sched_switch_irq(sched_t *sc, proc_t *c, proc_t *n)
+{
+	sc->pid = n->pid;
+	sc->curr = n;
+	uart_puts("irq switch FROM:\n");
+	uart_dump_ctx(&c->ctx);
+	uart_puts("TO:\n");
+	uart_dump_ctx(&n->ctx);
+}
+
+void sched(sched_t *sc, void (*swp)(sched_t*,proc_t*,proc_t*))
+{
+	proc_t *p, *c;
+	u64 deadline;
+
+	heap_peek(&sc->ready, &deadline, (void**)&p);
+	if (!p)
+		return;
+
+	c = sc->pid == 0 ? &sc->p0 : sched_get_proc(sc, sc->pid);
+
+	if (sc->pid == 0 || c->eff_deadline > deadline) {
+		// should perform context switch
+		heap_pop(&sc->ready, &deadline, (void**)&p);
+		p->state = PROC_RUNNING;
+		c->state = PROC_READY;
+		if (sc->pid != 0)
+			sched_sched_proc(sc, c->pid);
+		swp(sc, c, p);
+	}
+}
+/*
 void sched(sched_t *sc)
 {
 	proc_t *p, *c;
@@ -126,17 +177,18 @@ void sched(sched_t *sc)
 		// should perform context switch
 		heap_pop(&sc->ready, &deadline, (void**)&p);
 		p->state = PROC_RUNNING;
-		c->state = PROC_WAITING;
+		c->state = PROC_READY;
 		if (sc->pid != 0)
 			sched_sched_proc(sc, c->pid);
 		sc->pid = p->pid;
 		store_pstate(&c->ctx);
+		sc->curr = p;
 		uart_puts("switch FROM:\n");
-		uart_pctx(&c->ctx);
+		uart_dump_ctx(&c->ctx);
 		uart_puts("TO:\n");
-		uart_pctx(&p->ctx);
+		uart_dump_ctx(&p->ctx);
 		mmu_map_switch(&p->ctx.mmap);
 		load_pstate(&p->ctx);
 	}
 }
-
+*/
