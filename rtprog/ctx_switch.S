@@ -149,3 +149,97 @@ load_pstate:
 	// ---- Jump to saved PC (x16) ----
 	br      x16                        // no return
 	// no return
+
+.text
+	.align  7
+	#include "structs.h"
+	.global update_current_ctx
+	.type   update_current_ctx, %function
+update_current_ctx:
+	//get some registers to work with
+	sub	sp, sp, #32
+	stp	x2, x3, [sp, #0]
+	stp	x0, x1,   [sp, #16]
+
+	// this is a bit cumberome to do this way, but is neccessary
+	// to make shure we dont clobber any registers here.
+
+	// get global scheduler instance
+	adrp	x3, G_SCHED
+	add	x3, x3, :lo12:G_SCHED
+
+	//get ctx
+	ldr	x2, [x3, #SCHED_CURR]
+	add	x2, x2, #PROC_CTX
+
+	//store GPRs [X0:X30]
+	ldp	x0, x1, [sp, #0] // original x2, x3
+	stp	x0, x1, [x2, #(CTX_X + 16)]
+	add	sp, sp, #16
+	ldp	x0, x1, [sp, #0] // original x0, x1
+	stp	x0, x1, [x2, #CTX_X]
+	add	sp, sp, #16
+
+	//stp	x2,  x3,  [x2, #(CTX_X + 16)]
+	stp	x4,  x5,  [x2, #(CTX_X + 32)]
+	stp	x6,  x7,  [x2, #(CTX_X + 48)]
+	stp	x8,  x9,  [x2, #(CTX_X + 64)]
+	stp	x10, x11, [x2, #(CTX_X + 80)]
+	stp	x12, x13, [x2, #(CTX_X + 96)]
+	stp	x14, x15, [x2, #(CTX_X + 112)]
+	stp	x16, x17, [x2, #(CTX_X + 128)]
+	stp	x18, x19, [x2, #(CTX_X + 144)]
+	stp	x20, x21, [x2, #(CTX_X + 160)]
+	stp	x22, x23, [x2, #(CTX_X + 176)]
+	stp	x24, x25, [x2, #(CTX_X + 192)]
+	stp	x26, x27, [x2, #(CTX_X + 208)]
+	stp	x28, x29, [x2, #(CTX_X + 224)]
+	str	x30,      [x2, #(CTX_X + 240)]
+
+	// store PC and PSTATE
+	mov	x0, x30 // return address
+	mrs	x1, SPSR_EL1	//PSTATE
+	str	x0, [x2, #CTX_PC]
+	str	x1, [x2, #CTX_PSTATE]
+
+	// Save SP
+	mov	x0, sp
+	str	x0, [x2, #CTX_SP]
+
+	// save VREGS, PRSR and FPCR
+#if SAVE_FP
+	// Enable FP/ASIMD access at EL1 (if not already)
+	mrs     x10, CPACR_EL1
+	orr     x10, x10, #(3 << 20)        // FPEN=0b11
+	msr     CPACR_EL1, x10
+	isb
+
+	// Save Q registers (512 bytes)
+	// Note: CTX_OFF_VREGS is 16-byte aligned;
+	// stack is 16-byte aligned by AAPCS64.
+	stp	q0,  q1,  [x2, #(CTX_VREGS +  16*0)]
+	stp	q2,  q3,  [x2, #(CTX_VREGS +  16*2)]
+	stp	q4,  q5,  [x2, #(CTX_VREGS +  16*4)]
+	stp	q6,  q7,  [x2, #(CTX_VREGS +  16*6)]
+	stp	q8,  q9,  [x2, #(CTX_VREGS +  16*8)]
+	stp	q10, q11, [x2, #(CTX_VREGS +  16*10)]
+	stp	q12, q13, [x2, #(CTX_VREGS +  16*12)]
+	stp	q14, q15, [x2, #(CTX_VREGS +  16*14)]
+	stp	q16, q17, [x2, #(CTX_VREGS +  16*16)]
+	stp	q18, q19, [x2, #(CTX_VREGS +  16*18)]
+	stp	q20, q21, [x2, #(CTX_VREGS +  16*20)]
+	stp	q22, q23, [x2, #(CTX_VREGS +  16*22)]
+	stp	q24, q25, [x2, #(CTX_VREGS +  16*24)]
+	stp	q26, q27, [x2, #(CTX_VREGS +  16*26)]
+	stp	q28, q29, [x2, #(CTX_VREGS +  16*28)]
+	stp	q30, q31, [x2, #(CTX_VREGS +  16*30)]
+	// Save FPSR/FPCR
+	mrs     x11, FPSR
+	mrs     x12, FPCR
+	str     w11, [x2, #CTX_FPSR]
+	str     w12, [x2, #CTX_FPCR]
+	// (We keep CPACR_EL1 changes;
+	// if you lazily manage FP, you’d restore x9 here.)
+#endif
+	ret
+
