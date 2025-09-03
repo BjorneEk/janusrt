@@ -57,6 +57,8 @@ typedef struct sched {
 
 	heap_node_t rn[READY_MAX];
 	minheap_t ready;
+	heap_node_t wn[READY_MAX];
+	minheap_t waiting;
 } sched_t;
 
 // PSTATE / SPSR bits used here
@@ -110,7 +112,10 @@ static inline void sched_init(sched_t *s)
 		s->free_proc[i] = &s->pb[i];
 	}
 	s->nfree_proc = MAX_PROC;
+
 	heap_init(&s->ready, s->rn, READY_MAX);
+	heap_init(&s->waiting, s->wn, READY_MAX);
+
 	s->pid = 0;
 	s->p0.pid = 0;
 	s->p0.first = 0;
