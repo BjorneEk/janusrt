@@ -83,13 +83,17 @@ u32 sched_new_proc(
 	// create mmap that maps code to 0:code_size
 	p->ctx.mmap = proc_map_create(pc, code_size, asid++);
 
-
+	p->pa_pc = pc;
 	p->first = 1;
 	p->mem = mem;
 	p->mem_size = mem_size;
 	p->eff_deadline = deadline;
 	p->abs_deadline = deadline;
 	p->state = PROC_READY;
+	uart_puts("created proc, start addr: ");
+	uart_puthex(pc);
+	uart_puts("\nPC [0x0,0x50]: \n");
+	dump_mem((void*)(uintptr_t)pc, 0x50);
 	return p->pid;
 }
 
@@ -102,6 +106,7 @@ void sched_sched_proc(sched_t *sc, u32 pid)
 	if (heap_push(&sc->ready, p->eff_deadline, p))
 		KERNEL_PANIC(JRT_ENOMEM);
 }
+
 void uart_dump_ctx(ctx_t *c)
 {
 	u32 i;
@@ -153,6 +158,11 @@ void sched_switch_irq(sched_t *sc, proc_t *c, proc_t *n)
 	uart_dump_ctx(&c->ctx);
 	uart_puts("TO:\n");
 	uart_dump_ctx(&n->ctx);
+	uart_puts("PC (PA): ");
+	uart_puthex(n->pa_pc);
+	uart_puts("\nPC [0x0,0x50]: \n");
+	dump_mem((void*)(uintptr_t)n->pa_pc, 0x50);
+
 }
 
 void sched(sched_t *sc, void (*swp)(sched_t*,proc_t*,proc_t*))

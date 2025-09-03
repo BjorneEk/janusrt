@@ -399,6 +399,127 @@ static inline void run_visit(u64 va, u64 pa, u64 size)
 	run_.len = size;
 }
 
+
+static void putrow(
+	char b1[3*8+2],
+	char b2[3*8+2],
+	char b1c[3*8+2],
+	char b2c[3*8+2])
+{
+	uart_puts("|");
+	uart_puts(b1);
+	uart_puts("|");
+	uart_puts(b2);
+	uart_puts("|");
+	uart_puts(b1c);
+	uart_puts("|");
+	uart_puts(b2c);
+	uart_puts("|\n");
+}
+static void str_putu64(char *buff, u64 v, u32 n)
+{
+	int i;
+
+	i = n;
+	//buf[i--] = '\0';
+
+	if (v == 0) {
+		*buff = '0';
+		return;
+	}
+
+	while (v && i >= 0) {
+		buff[i--] = '0' + (v % 10);
+		v /= 10;
+	}
+	return;
+}
+static char tohex(int i)
+{
+	if (i < 10)
+		return '0' + i;
+	return 'A' + (i - 10);
+}
+
+static void str_putaddr(char *buff, u64 v, u32 n)
+{
+	int i;
+
+	i = n;
+
+	while (v && i >= 0) {
+		buff[i--] = v == 0 ? '0' : tohex(v % 16);
+		if (v == 0)
+			return;
+		v /= 16;
+	}
+	return;
+}
+
+static void str_butb(char *buff, u32 v)
+{
+	u32 nib;
+	nib = (v >> 4) & 0xFULL;
+	buff[0] = nib < 10 ? ('0' + nib) : ('a' + (nib - 10));
+	nib = v & 0xFULL;
+	buff[1] = nib < 10 ? ('0' + nib) : ('a' + (nib - 10));
+}
+
+void dump_mem(const void *start_addr, u64 n)
+{
+	const u8 *d;
+	u64 i, j, r, cnt;
+	const u8 rl = 8*3+1;
+	char a[rl+1];
+	char b1[rl+1];
+	char b2[rl+1];
+	char b1c[rl+1];
+	char b2c[rl+1];
+	char *b;
+	a[rl - (8*2 - 2)] = '\0';
+	b1[rl] = '\0';
+	b2[rl] = '\0';
+	b1c[rl - (8*2 - 2)] = '\0';
+	b2c[rl - (8*2 - 2)] = '\0';
+	d = start_addr;
+
+	for (i = r = cnt = 0; i < n; i += 0x10) {
+		memset(a, ' ', rl - (8*2 - 1));
+		memset(b1, ' ', rl);
+		memset(b2, ' ', rl);
+		memset(b1c, ' ', rl - (8*2 - 1));
+		memset(b2c, ' ', rl - (8*2 - 1));
+		if(i != 0 && !memcmp(&d[i], &d[i - 0x10], 0x10)) {
+			r = 1;
+			cnt++;
+			continue;
+		}
+
+		if (r) {
+			a[1] = '*';
+			str_putu64(&a[2], cnt, 6);
+			uart_puts("|");
+			uart_puts(a);
+			putrow(b1, b2, b1c, b2c);
+			r = cnt = 0;
+		}
+
+		str_putaddr(&a[1], (uintptr_t)(&d[i]), 7);
+		for (j = 0; j < 0x10; ++j) {
+			b = j < 0x8 ? &b1[1+j*3] : &b2[1+(j - 0x8)*3];
+			str_butb(b, d[i + j]);
+		}
+		for (j = 0; j < 0x10; ++j) {
+			b = j < 0x8 ? &b1c[1+j] : &b2c[(1+j - 0x8)];
+
+			b[0] = (31 < d[i+j] && 127 > d[i+j]) ?
+				d[i+j] : '*';
+		}
+		uart_puts("|");
+		uart_puts(a);
+		putrow(b1, b2, b1c, b2c);
+	}
+}
 #define ENTRIES_PER_TABLE 512
 
 static void walk_level(int level, u64 *table, u64 va_base)

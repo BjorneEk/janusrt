@@ -30,7 +30,7 @@ typedef struct process {
 	u32	pid;
 	state_t	state;
 	int first;
-
+	u64 pa_pc;
 	/* scheduling */
 	u64	wait_until;      /* how long to wait */
 	u64	abs_deadline;   /* base requested deadline */
@@ -140,7 +140,8 @@ void sched_free_proc(sched_t *sc, u32 pid);
 extern void store_pstate(ctx_t *ctx);
 extern u64 load_pstate(ctx_t *ctx);
 
-
+// ctx_switch.S
+void update_current_ctx(void);
 void sched(sched_t *sc, void (*swp)(sched_t*,proc_t*,proc_t*));
 void sched_switch_sync(sched_t *sc, proc_t *c, proc_t *n);
 void sched_switch_irq(sched_t *sc, proc_t *c, proc_t *n);

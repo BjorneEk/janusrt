@@ -124,5 +124,6 @@ void mmu_map_destroy(mmu_map_t *pm);
 
 void dump_map(const mmu_map_t *map);
 
+void dump_mem(const void *start_addr, u64 n);
 
 #endif
