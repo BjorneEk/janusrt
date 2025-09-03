@@ -5,7 +5,7 @@
 #ifndef _TIMER_H_
 #define _TIMER_H_
 #include "types.h"
-
+#include "sched.h"
 /* ---- MMIO bases for QEMU virt ---- */
 #define GICD_BASE		0x08000000UL
 #define GICR_BASE0		0x080A0000UL	/* first redistributor frame */
@@ -24,6 +24,8 @@
 #define GICR_IGROUPR0		0x0080
 #define GICR_ISENABLER0		0x0100
 #define GICR_IPRIORITYR		0x0400		/* byte-addressable priorities */
+
+#define GICR_IGRPMODR0  0x0D00  /* if RAZ/WI, writes are harmless */
 
 static inline u32 mmio_r32(uintptr_t a)
 {
@@ -96,7 +98,7 @@ static inline void sys_enable_icc_el1(void)
 
 extern void gic_enable_dist(void);
 
-typedef void (*timer_func_t)(void);
+typedef void (*timer_func_t)(ctx_t *c);
 #define EL1_PHYS_TIMER_PPI (30)
 #define EL1_VIRT_TIMER_PPI (27)
 
@@ -109,5 +111,5 @@ void start_periodic_task(u64 ticks);
 void start_periodic_task_freq(u64 hz);
 void stop_periodic_task(void);
 
-void timer_irq_handler(void);
+void timer_irq_handler(ctx_t *c);
 #endif

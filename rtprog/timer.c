@@ -62,12 +62,24 @@ int gic_enable_ppi(u32 ppi, u8 prio, int group1ns)
 	}
 
 	/* Group selection */
+	/* Group selection: make it Group-1 */
 	val = mmio_r32(sgi_base + GICR_IGROUPR0);
-	if (group1ns)
-		val |= (1u << ppi);
-	else
-		val &= ~(1u << ppi);
+	if (group1ns) val |=  (1u << ppi);     // Group-1
+	else          val &= ~(1u << ppi);     // Group-0
 	mmio_w32(sgi_base + GICR_IGROUPR0, val);
+
+	/* And ensure it's **Non-secure** Group-1 (NS), not Secure Group-1 */
+	if (group1ns) {
+		val = mmio_r32(sgi_base + GICR_IGRPMODR0);
+		val &= ~(1u << ppi);               // 0 → Group-1NS
+		mmio_w32(sgi_base + GICR_IGRPMODR0, val);
+	}
+	//val = mmio_r32(sgi_base + GICR_IGROUPR0);
+	//if (group1ns)
+	//	val |= (1u << ppi);
+	//else
+	//	val &= ~(1u << ppi);
+	//mmio_w32(sgi_base + GICR_IGROUPR0, val);
 
 	/* Priority byte */
 	addr = sgi_base + GICR_IPRIORITYR + ppi;
@@ -135,7 +147,7 @@ void stop_periodic_task(void)
 	asm volatile("isb");
 }
 
-void timer_irq_handler(void)
+void timer_irq_handler(ctx_t *c)
 {
 	u64	now;
 	u64	next;
@@ -145,7 +157,7 @@ void timer_irq_handler(void)
 	now = 0;
 	next = g_next_cval;
 
-	g_timer_func();
+	g_timer_func(c);
 
 	period = g_period_ticks;
 
