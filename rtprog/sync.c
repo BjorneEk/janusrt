@@ -3,6 +3,7 @@
 
 #include "uart.h"
 #include "cpu.h"
+#include "syscall.h"
 
 /* forward */
 static const char *ec_str(u64 ec);
@@ -177,7 +178,10 @@ void sync_set_recover_handler(sync_recover_t recover)
 {
 	g_sync_recover = recover;
 }
-
+#define ESR_EC(esr)        (((esr) >> 26) & 0x3F)
+#define ESR_IL(esr)        (((esr) >> 25) & 0x1)
+#define ESR_ISS(esr)       ((esr) & 0x01FFFFFF)
+#define SVC_IMM16(esr)     ((u16)ESR_ISS(esr))
 /* C entry called from EL1h Sync vector */
 void sync_exception_entry(u64 esr, u64 elr, u64 far)
 {
@@ -186,8 +190,8 @@ void sync_exception_entry(u64 esr, u64 elr, u64 far)
 	u64 iss;
 	u32 imm16;
 
-	ec = (esr >> 26) & 0x3Fu;
-	il = (esr >> 25) & 0x1u;
+	ec = ESR_EC(esr);
+	il = ESR_IL(esr);
 	iss =  esr & 0x01ffffff;
 
 	uart_puts("[SYNC] ESR=0x"); print_hex64(esr);
@@ -198,6 +202,10 @@ void sync_exception_entry(u64 esr, u64 elr, u64 far)
 	print_ec_line(ec, il);
 
 	switch ((u32)ec) {
+	case 0x15:
+		uart_puts("syscall\n");
+		syscall(SVC_IMM16(esr));
+		return;
 	case 0x20:	/* IABT, lower EL */
 	case 0x21:	/* IABT, same EL */
 		decode_abort(esr, far, 1);
