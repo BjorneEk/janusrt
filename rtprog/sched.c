@@ -67,10 +67,10 @@ u32 sched_new_proc(
 
 	//mmu translates 0->pc
 	p->ctx.pc = 0;
-
+	//p->ctx.pc = pc;
 	// el1h, dissable all exceptions except serr
 	// serr are fatal and usefull maybe ?!?
-	p->ctx.pstate = pstate_el1h(IRQ_MASK | FIQ_MASK | DBG_MASK);
+	p->ctx.pstate = pstate_el1h(FIQ_MASK);
 
 	// set default args for:
 	// int start(void *mem, size_t mem_size);

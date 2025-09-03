@@ -20,7 +20,8 @@ CFLAGS +=				\
 	-I$(SHARED_DIR)			\
 	-I$(LIBC_DIR)			\
 	-I../ \
-	-fpie				\
+-fno-pic -fno-pie
+#	-fpie				\
 	-fno-plt \
 	-fno-semantic-interposition	\
 	-fvisibility=hidden
@@ -34,7 +35,8 @@ LINKER := linker.ld
 ELF := app.elf
 
 LDFLAGS := -T $(LINKER) -e main --gc-sections --build-id=none \
-	--just-symbols=$(LINK_OBJ) -pie
+	--just-symbols=$(LINK_OBJ)
+#-pie
 
 .PHONY: clean
 

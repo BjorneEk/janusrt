@@ -216,6 +216,7 @@ void build_process_map(pt_root_t r, u64 proc_base_pa, u64 proc_image_len)
 //   Identity map EVERYTHING the kernel may touch: [CODE_0 .. MEM_END] (RWX, global).
 void build_kernel_map(pt_root_t r)
 {
+	map_range_pages(r, 0, 0, CODE_0, PTE_KERN_RWX);
 	map_range_pages(r, CODE_0, CODE_0, (MEM_END + 1ULL) - CODE_0, PTE_KERN_RWX);
 
 	map_uart(r);

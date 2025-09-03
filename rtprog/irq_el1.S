@@ -5,7 +5,7 @@
 	#include "structs.h"
 	.equ KERNEL_SP,		(SCHED_P0 + PROC_CTX + CTX_SP)
 	.equ KERNEL_MMAP,	(SCHED_P0 + PROC_CTX + CTX_MMAP)
-	.equ IRQ_DEBUG, 1
+	.equ IRQ_DEBUG, 0
 
 	.extern irq_dispatch
 	.extern mmu_map_switch
@@ -138,6 +138,17 @@ no_dump:
 	//switch to ctx MMAP
 	add	x0, x20, #CTX_MMAP
 	bl	mmu_map_switch
+
+	// inline switch to ctx MMAP
+	//ldr	x0, [x20, #(CTX_MMAP + MMAP_ROOT + PT_ROOT_L0_PA)]
+	//ldr	x1, [x20, #(CTX_MMAP + MMAP_ASID)]
+	//and     x0, x0, #~(0xFFF)      // 4 KiB alignment
+	//uxth    x1, w1
+	//lsl     x1, x1, #48            // ASID in [63:48] (A1=0)
+	//orr     x0, x0, x1
+	//msr     TTBR0_EL1, x0
+	//isb
+
 
 	// restore VREGS, PRSR and FPCR
 #if SAVE_FP

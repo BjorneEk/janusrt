@@ -95,6 +95,7 @@ debug:
 
 clean:
 	$(MAKE) -C $(LIBC_DIR) clean
+	$(MAKE) -C $(APP_DIR) clean
 	$(RM) $(GEN_LD)
 	$(RM) *.o *.elf
 

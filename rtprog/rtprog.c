@@ -67,7 +67,7 @@ static void jrt_loop(void)
 	for (;;) {
 		while (heap_empty(&G_SCHED.ready))
 			wfe();
-		sched(&G_SCHED, sched_switch_sync);
+		//sched(&G_SCHED, sched_switch_sync);
 	}
 }
 void jrt_main(void)
@@ -146,6 +146,7 @@ void schedule_req(u64 pc, u64 prog_size, u64 mem_req)
 	u32 pid;
 	void *mem;
 
+	//interrupts_disable_all();
 	mem = alloc(&G_ALLOC, mem_req);
 
 	if (!mem)
