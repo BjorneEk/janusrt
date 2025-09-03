@@ -106,10 +106,10 @@ run-container: .docker-image.stamp
 		bash
 
 # ---------------------------- RUN-QEMU  --------------------------
-run:
+run: compile
 	./run.sh $(JRT_CODE_PHYS) $(JRT_CODE_SIZE) $(DEVTREE_BLOB)
 
-softclean:
+clean:
 	$(RM) -rf $(RT_BIN) $(LOADER_BIN) $(CHECKER_BIN) $(MODULE_KO) $(INITRAMFS)
 	$(RM) -rf $(addprefix $(ROOTFS_DIR)/,bin sbin etc proc sys dev)
 	$(RM) -rf $(DEVTREE_BLOB)
@@ -117,7 +117,7 @@ softclean:
 	$(MAKE) -C rtprog clean
 	$(MAKE) -C userspace clean
 
-clean:
+fullclean:
 	$(RM) -rf .docker-image.stamp
 	$(RM) -rf $(RT_BIN) $(LOADER_BIN) $(CHECKER_BIN) $(MODULE_KO) $(INITRAMFS)
 	$(RM) -rf $(addprefix $(ROOTFS_DIR)/,bin sbin etc proc sys dev)
