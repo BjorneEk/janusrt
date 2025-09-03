@@ -21,6 +21,7 @@
 #include "kerror.h"
 #include "sched.h"
 #include "alloc.h"
+#include "gic.h"
 
 sched_t G_SCHED;
 alloc_t G_ALLOC;
@@ -28,18 +29,24 @@ ctx_t *G_KERNEL_CTX;
 
 void periodic_func(ctx_t *);
 
-static void timer_trampoline(ctx_t *c)
+static void trampoline(ctx_t *c)
 {
 	timer_irq_handler(c);
 }
 
 void timer_init(void)
 {
-	irq_register_ppi(EL1_PHYS_TIMER_PPI, timer_trampoline);
+	irq_register_ppi(EL1_PHYS_TIMER_PPI, trampoline);
 	set_timer_func(periodic_func);
 	start_periodic_task_freq(1);
 }
-
+void sched_spi_init(void)
+{
+	irq_register_spi(SCHED_SPI, periodic_func);
+	sys_enable_icc_el1();
+	gic_enable_dist();
+	gic_enable_spi(SCHED_SPI);
+}
 /*
  * recovery function for synchronous exceptions
  */
@@ -108,7 +115,8 @@ void jrt_main(void)
 	interrupts_enable_all();
 
 	// initialize periodix timer
-	timer_init();
+	//timer_init();
+	sched_spi_init();
 
 	jrt_loop();
 

@@ -20,6 +20,7 @@
 #include <asm/sysreg.h>      /* for CTR_EL0 */
 #include <linux/types.h>
 #include <linux/atomic.h>
+#include <linux/mutex.h>
 
 #include "rtcore.h"
 #include "memory_layout.h"
@@ -33,6 +34,14 @@ typedef struct rtcore_ctx {
 	unsigned long first_off;	/* phys_start_unaligned & (PAGE_SIZE-1) */
 	bool mapped;
 } rtcore_ctx_t;
+
+#define GICD_BASE_DEFAULT   0x08000000ULL   // QEMU virt
+#define GICD_ISPENDR(n)    (0x0200 + 4*(n))
+
+static ulong gicd_base = GICD_BASE_DEFAULT;
+static uint spi = SCHED_SPI;
+static void __iomem *gicd;
+static DEFINE_MUTEX(sched_lock);
 
 static int rtcore_open(struct inode *ino, struct file *filp);
 static int rtcore_release(struct inode *ino, struct file *filp);
@@ -52,6 +61,7 @@ static struct class *rtcore_class;
 static struct cdev rtcore_cdev;
 
 static struct mpsc_ring __iomem *tojrt_ring;
+
 
 static size_t G_MEM_OFF = 0;
 
@@ -236,6 +246,9 @@ static int mpsc_push(struct mpsc_ring *r,
 	return 0;
 }
 
+static inline u32 reg_index32(u32 id) { return id / 32; }
+static inline u32 bit_index32(u32 id) { return id % 32; }
+
 static long rtcore_sched_prog(struct file *file, unsigned long arg)
 {
 	rtcore_ctx_t *ctx;
@@ -296,8 +309,12 @@ static long rtcore_sched_prog(struct file *file, unsigned long arg)
 		entry_phys,
 		ctx->user_len - (args.entry_user - ctx->user_base));
 
-	int r = mpsc_push(tojrt_ring, &req, 0);
-	pr_info("rtcore: shed %i\n", r);
+	mutex_lock(&sched_lock);
+	int res = mpsc_push(tojrt_ring, &req, 0);
+	writel_relaxed(1u << bit_index32(spi), gicd + GICD_ISPENDR(reg_index32(spi)));
+	wmb();
+	mutex_unlock(&sched_lock);
+	pr_info("rtcore: shed_sent %i\n", res);
 	return 0;
 }
 
@@ -384,6 +401,9 @@ static int __init rtcore_init(void)
 	alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME);
 	cdev_init(&rtcore_cdev, &rtcore_fops);
 	cdev_add(&rtcore_cdev, dev_num, 1);
+	gicd = ioremap(gicd_base, 0x10000);
+	if (!gicd)
+		return -ENOMEM;
 
 	rtcore_class = class_create(DEVICE_NAME);
 	device_create(rtcore_class, NULL, dev_num, NULL, DEVICE_NAME);

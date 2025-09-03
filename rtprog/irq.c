@@ -11,7 +11,7 @@ void irq_register_ppi(u32 intid, irq_fn_t fn)  /* intid < 32 */
 {
 	if (intid < 32) {
 		uart_puts("register ppi (");
-		uart_putu64((u64)(uintptr_t)fn);
+		uart_puthex((u64)(uintptr_t)fn);
 		uart_puts(")\n");
 		ppi_table[intid] = fn;
 	}
@@ -21,7 +21,7 @@ void irq_register_spi(u32 intid, irq_fn_t fn)  /* 32..1019 */
 {
 	if (intid >= 32 && intid < 1020) {
 		uart_puts("register spi (");
-		uart_putu64((u64)(uintptr_t)fn);
+		uart_puthex((u64)(uintptr_t)fn);
 		uart_puts(")\n");
 		spi_table[intid-32] = fn;
 	}
@@ -63,7 +63,7 @@ void irq_dispatch(ctx_t *ctx, u32 intid)
 	f = (intid < 32) ? ppi_table[intid] : spi_table[intid - 32];
 
 	//uart_puts("irq dispatch (");
-	//uart_putu64((u64)(uintptr_t)f);
+	//uart_puthex((u64)(uintptr_t)f);
 	//uart_puts(")\n");
 
 	if (f)
