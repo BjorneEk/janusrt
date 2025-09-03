@@ -286,6 +286,9 @@ void mmu_map_switch(const mmu_map_t *pm)
 {
 	// If reusing ASIDs, TLBI that ASID first:
 	// tlbi_asid(pm->asid); dsb ish; isb();
+	//
+	//uart_puts("[MMU] switch:\n");
+	//dump_map(pm);
 	write_ttbr0_asid(pm->root.l0_pa, pm->asid);
 	// global kernel entries remain valid; ISB suffices.
 }
@@ -312,4 +315,136 @@ void mmu_enable(mmu_map_t *m)
 
 
 
+static inline u64 *root_table_va(const mmu_map_t *m)
+{
+	// Prefer VA pointer if set, else assume identity for PA.
+	return m->root.l0 ? m->root.l0 : (u64 *)(uintptr_t)m->root.l0_pa;
+}
 
+/* ---- descriptor helpers for 4K granule ---- */
+
+static inline int desc_kind(u64 d, int level)
+{
+	u64 low2;
+	// return: 0=invalid, 1=table, 2=block_or_page
+	if ((d & PTE_VALID) == 0)
+		return 0;
+	low2 = d & 0x3ULL; // bits [1:0]
+	if (level < 3) {
+		if (low2 == DESC_TABLE)
+			return 1;          // next-level table
+		if (low2 == DESC_BLOCK && (level == 1 || level == 2))
+			return 2; // block
+		return 0; // reserved form at L0/invalid
+	} else {
+		// L3: valid page has DESC_PAGE (==3)
+		return (low2 == DESC_PAGE) ? 2 : 0;
+	}
+}
+
+static inline u64 outaddr_mask(void)
+{
+	u64 pa_field_mask;
+
+	// keep PA_BITS and clear low PAGE_SHIFT bits
+	pa_field_mask = (PA_BITS >= 64) ? ~0ULL : ((1ULL << PA_BITS) - 1ULL);
+	return pa_field_mask & PAGE_MASK;
+}
+
+static inline u64 desc_outaddr(u64 d)
+{
+	return d & outaddr_mask();
+}
+
+static inline u64 level_span_bytes(int level)
+{
+	switch (level) {
+		case 0: return 1ULL << 39; // 512 GiB per L0 slot (4K granule)
+		case 1: return 1ULL << 30; // 1 GiB per L1 block
+		case 2: return 1ULL << 21; // 2 MiB per L2 block
+		case 3: return 1ULL << 12; // 4 KiB per L3 page
+		default: return 0;
+	}
+}
+
+/* ---- simple coalescer so output is readable ---- */
+
+static struct {
+	bool active;
+	u64 va, pa, len;
+} run_;
+
+static inline void run_flush(void)
+{
+	if (!run_.active)
+		return;
+	pr_map(run_.va, run_.pa, run_.len);
+	run_.active = false;
+}
+
+static inline void run_visit(u64 va, u64 pa, u64 size)
+{
+	if (run_.active &&
+			run_.va + run_.len == va &&
+			run_.pa + run_.len == pa) {
+		run_.len += size;
+		return;
+	}
+	run_flush();
+	run_.active = true;
+	run_.va  = va;
+	run_.pa  = pa;
+	run_.len = size;
+}
+
+#define ENTRIES_PER_TABLE 512
+
+static void walk_level(int level, u64 *table, u64 va_base)
+{
+	const u64 slot_span;
+	u64	va_slot,
+		next_pa,
+		*next,
+		size,
+		pa,
+		d;
+	int i, k;
+
+	slot_span = level_span_bytes(level);
+
+	for (i = 0; i < ENTRIES_PER_TABLE; ++i) {
+		d = table[i];
+		k = desc_kind(d, level);
+		if (k == 0)
+			continue;
+
+		va_slot = va_base + (u64)i * slot_span;
+
+		if (k == 1) {
+			// next level table
+			next_pa = desc_outaddr(d);
+			// assume PT memory is visible at this VA
+			next = (u64 *)(uintptr_t)next_pa;
+			walk_level(level + 1, next, va_slot);
+		} else { // block or page
+			size = slot_span;
+			pa   = desc_outaddr(d);
+			run_visit(va_slot, pa, size);
+		}
+	}
+}
+
+
+void dump_map(const mmu_map_t *map)
+{
+	u64 *l0;
+
+	l0 = root_table_va(map);
+	if (!l0) {
+		uart_puts("[MMU]: <no L0>\n");
+		return;
+	}
+	run_.active = false;
+	walk_level(0, l0, 0);
+	run_flush();
+}

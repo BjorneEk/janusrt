@@ -121,4 +121,8 @@ void pt_root_free(pt_root_t r);
 
 // Destroy helpers
 void mmu_map_destroy(mmu_map_t *pm);
+
+void dump_map(const mmu_map_t *map);
+
+
 #endif
