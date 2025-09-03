@@ -7,7 +7,7 @@
 	.global _start
 	.extern jrt_main
 	.extern psci_cpu_off
-	.extern irq_dispatch
+	.extern sync_el1
 	.extern irq_el1
 
 _start:
@@ -120,30 +120,10 @@ bad_irq_spin:
 // eret
 //
 
-// ----------- Syncronous exception ---------------------------------------------
-.text
-	.align 4
-	.global sync_el1h
-	.extern sync_exception_entry
-
-sync_el1h:
-	// preserve LR just in case we want to return (we don't)
-	sub	sp, sp, #16
-	str	x30, [sp]
-
-	mrs	x0, ESR_EL1
-	mrs	x1, ELR_EL1
-	mrs	x2, FAR_EL1
-	bl	sync_exception_entry
-
-	ldr	x30, [sp]
-	add	sp, sp, #16
-	eret
-
 // ---------------- Vector table (128-byte entries, 2 KiB aligned) -------------
 	.align 11
 vector_table:
-	b	sync_el1h          // EL1t Sync
+	b	sync_el1          // EL1t Sync
 	.balign 128
 	b	irq_el1     // EL1t IRQ
 	.balign 128
@@ -152,7 +132,7 @@ vector_table:
 	b	serr_spin          // EL1t SError
 	.balign 128
 
-	b	sync_el1h          // EL1h Sync
+	b	sync_el1          // EL1h Sync
 	.balign 128
 	b	irq_el1     // EL1h IRQ
 	.balign 128
@@ -161,7 +141,7 @@ vector_table:
 	b	serr_spin          // EL1h SError
 	.balign 128
 
-	b	sync_el1h          // EL0 AArch64 Sync
+	b	sync_el1          // EL0 AArch64 Sync
 	.balign 128
 	b	irq_el1     // EL0 AArch64 IRQ
 	.balign 128
@@ -170,7 +150,7 @@ vector_table:
 	b	serr_spin
 	.balign 128
 
-	b	sync_el1h          // EL0 AArch32 Sync
+	b	sync_el1          // EL0 AArch32 Sync
 	.balign 128
 	b	irq_el1     // EL0 AArch32 IRQ
 	.balign 128
