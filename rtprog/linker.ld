@@ -16,7 +16,7 @@ SECTIONS {
 	} :text
 	.rodata : ALIGN(16) { *(.rodata*) *(.constdata*) } :rodata
 	.data   : ALIGN(16) { *(.data*) } :data
-	.bss (NOLOAD) : ALIGN(16) {
+	.bss : ALIGN(16) {
 		__bss_start = .;
 		*(.bss*) *(COMMON)
 		__bss_end = .;

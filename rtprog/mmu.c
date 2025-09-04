@@ -203,6 +203,8 @@ void build_process_map(pt_root_t r, u64 proc_base_pa, u64 proc_image_len)
 
 	// Kernel identity
 	k_end = (u64)__kernel_end;
+	if (proc_base_pa < k_end)
+		k_end = proc_base_pa;
 	if (k_end > CODE_0)
 		map_range_pages(r, CODE_0, CODE_0, k_end - CODE_0, PTE_KERN_RWX);
 

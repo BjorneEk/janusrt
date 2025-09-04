@@ -120,6 +120,14 @@ sync_el1:
 	add	x0, x20, #CTX_MMAP
 	bl	mmu_map_switch
 
+	// refetch again, since we are on a new map
+	//adrp	x21, G_SCHED
+	//add	x21, x21, :lo12:G_SCHED
+	//refetch current ctx
+	//ldr	x20, [x21, #SCHED_CURR] // x0 = G_SCHED.curr - G_SCHED
+	//add	x20, x20, #PROC_CTX
+
+
 	// restore VREGS, PRSR and FPCR
 #if SAVE_FP
 	// Restore FPSR/FPCR

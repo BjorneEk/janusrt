@@ -82,7 +82,7 @@ $(ELF): $(OBJ) $(GEN_LD) $(LIBC)
 
 
 $(RT_BIN): $(ELF)
-	$(OBJCOPY) -O binary $< $@
+	$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
 
 app: $(ELF)
 	$(MAKE) -C $(APP_DIR)

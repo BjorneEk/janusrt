@@ -105,7 +105,11 @@ u64 timer_schedule_at_ticks(u64 deadline_ticks)
 	return deadline_ticks;
 }
 
-
+void timer_cancel(void)
+{
+	sys_msr_cntp_ctl(0);    // disable
+	asm volatile("isb");
+}
 
 static u64	g_next_cval;      /* absolute next deadline (CNTPCT units) */
 static u64	g_period_ticks;   /* period in ticks */

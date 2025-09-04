@@ -16,6 +16,7 @@ u64 time_now_us(void);
 u64 time_now_ticks(void);
 
 u64 timer_schedule_at_ticks(u64 deadline_ticks);
+void timer_cancel(void);
 typedef void (*timer_func_t)(ctx_t *c);
 #define EL1_PHYS_TIMER_PPI (30)
 #define EL1_VIRT_TIMER_PPI (27)

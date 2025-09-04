@@ -203,8 +203,10 @@ void timer_fn(ctx_t *)
 	u64 dl;
 	u64 now;
 
-	if (!sched_has_waiting(&G_SCHED))
+	if (!sched_has_waiting(&G_SCHED)) {
+		timer_cancel();
 		return;
+	}
 	do {
 		heap_pop(&G_SCHED.waiting, &dl, (void**)&p);
 		now = time_now_ticks();
@@ -219,6 +221,7 @@ void timer_fn(ctx_t *)
 		sched_ready_proc(&G_SCHED, p->pid);
 		sched(&G_SCHED, sched_switch_irq);
 	} while (sched_has_waiting(&G_SCHED));
+	timer_cancel();
 	return;
 end:
 	timer_schedule_at_ticks(dl);

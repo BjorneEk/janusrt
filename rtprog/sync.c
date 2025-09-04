@@ -204,7 +204,7 @@ void sync_exception_entry(u64 esr, u64 elr, u64 far)
 	switch ((u32)ec) {
 	case 0x15:
 		uart_puts("syscall\n");
-		syscall(SVC_IMM16(esr));
+		take_syscall(SVC_IMM16(esr));
 		return;
 	case 0x20:	/* IABT, lower EL */
 	case 0x21:	/* IABT, same EL */
