@@ -22,6 +22,7 @@
 #include "sched.h"
 #include "alloc.h"
 #include "gic.h"
+#include "syscall.h"
 
 sched_t G_SCHED;
 alloc_t G_ALLOC;
@@ -69,15 +70,12 @@ static void sync_recover(enum panic_reason r)
 
 static void jrt_loop(void)
 {
-	G_SCHED.pid = 0;
-
-	uart_puts("enter loop\n");
+	uart_puts("kernel spin\n");
 	for (;;) {
-		while (heap_empty(&G_SCHED.ready))
-			wfe();
-		//sched(&G_SCHED, sched_switch_sync);
+		wfe();
 	}
 }
+
 void jrt_main(void)
 {
 	uint32_t i;
@@ -149,6 +147,10 @@ static inline int mpsc_pop(struct mpsc_ring *r, u8 out[TOJRT_REC_SIZE])
 	r->tail = tail + 1;
 	return 0;
 }
+void jrt_exit(void)
+{
+	syscall(SYSCALL_EXIT);
+}
 
 void schedule_req(u64 pc, u64 prog_size, u64 mem_req)
 {
@@ -168,7 +170,7 @@ void schedule_req(u64 pc, u64 prog_size, u64 mem_req)
 		mem,
 		mem_req,
 		0,
-		jrt_loop);
+		jrt_exit);
 	uart_puts("[SCHED] ");
 	uart_putu32(pid);
 	uart_puts(": (");

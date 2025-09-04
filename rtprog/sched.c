@@ -4,7 +4,9 @@
 #include "string.h"
 #include "kerror.h"
 #include "uart.h"
+#include "alloc.h"
 #include "timer.h"
+extern alloc_t G_ALLOC;
 proc_t *sched_alloc_proc(sched_t *sc)
 {
 	proc_t *r;
@@ -38,6 +40,8 @@ void sched_free_proc(sched_t *sc, u32 pid)
 
 	p->state = PROC_UNUSED;
 	sc->free_proc[sc->nfree_proc++] = p;
+	free(&G_ALLOC, p->mem);
+	mmu_map_destroy(&p->ctx.mmap);
 }
 
 

@@ -6,7 +6,8 @@
 #include "stdarg.h"
 
 typedef enum syscall {
-	SYSCALL_WAIT_UNTIL
+	SYSCALL_WAIT_UNTIL,
+	SYSCALL_EXIT
 } syscall_t;
 
 

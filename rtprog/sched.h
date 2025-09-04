@@ -41,7 +41,6 @@ typedef struct process {
 
 	void *mem;
 	size_t mem_size;
-
 } proc_t;
 
 #define READY_MAX (0xFF)

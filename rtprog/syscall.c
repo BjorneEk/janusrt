@@ -20,6 +20,15 @@ static void wait_until(u64 until)
 		timer_schedule_at_ticks(until);
 }
 
+static void exit()
+{
+	proc_t *p;
+
+	p = sched_yield(&G_SCHED);
+
+	sched_free_proc(&G_SCHED, p->pid);
+}
+
 void take_syscall(u16 imm __attribute__((unused)))
 {
 	switch (G_SCHED.curr->ctx.x[8]) {
@@ -33,6 +42,9 @@ void take_syscall(u16 imm __attribute__((unused)))
 		uart_puts(")\n");
 		wait_until(G_SCHED.curr->ctx.x[0]);
 		return;
+	case SYSCALL_EXIT:
+		uart_puts("take syscall EXIT\n");
+		exit();
 	}
 }
 static inline u64 invoke_syscall(u64 nr, u64 a0,u64 a1,u64 a2,u64 a3,u64 a4,u64 a5)
@@ -62,6 +74,9 @@ void syscall(syscall_t call, ...)
 		uart_putu64(wait_until);
 		uart_puts(")\n");
 		invoke_syscall(SYSCALL_WAIT_UNTIL, wait_until, 0, 0, 0, 0, 0);
+		break;
+	case SYSCALL_EXIT:
+		invoke_syscall(SYSCALL_EXIT, 0, 0, 0, 0, 0, 0);
 		break;
 	default:
 		break;
