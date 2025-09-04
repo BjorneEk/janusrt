@@ -2,10 +2,68 @@
 // Author: Gustaf Franzen <gustaffranzen@icloud.com>
 #include "syscall.h"
 #include "sched.h"
+#include "timer.h"
 
 extern sched_t G_SCHED;
 
-void syscall(u16 imm)
+static void wait_until(u64 until)
 {
-	uart_puts("syscall!\n");
+	proc_t *p;
+	bool sched_timer;
+
+	p = sched_yield(&G_SCHED);
+	p->wait_until = until;
+	p->state = PROC_WAITING;
+	sched_timer = !sched_has_waiting(&G_SCHED);
+	sched_wait_proc(&G_SCHED, p->pid);
+	if (sched_timer)
+		timer_schedule_at_ticks(until);
+}
+
+void take_syscall(u16 imm __attribute__((unused)))
+{
+	switch (G_SCHED.curr->ctx.x[8]) {
+	case SYSCALL_WAIT_UNTIL:
+		uart_puts("take syscall WAIT_UNTIL(");
+		uart_putu64(G_SCHED.curr->pid);
+		uart_puts(", ");
+		uart_putu64(G_SCHED.curr->ctx.x[0]);
+		uart_puts(") (now:");
+		uart_putu64(time_now_ticks());
+		uart_puts(")\n");
+		wait_until(G_SCHED.curr->ctx.x[0]);
+		return;
+	}
+}
+static inline u64 invoke_syscall(u64 nr, u64 a0,u64 a1,u64 a2,u64 a3,u64 a4,u64 a5)
+{
+	register u64 x8 asm("x8") = nr;
+	register u64 x0 asm("x0") = a0;
+	register u64 x1 asm("x1") = a1;
+	register u64 x2 asm("x2") = a2;
+	register u64 x3 asm("x3") = a3;
+	register u64 x4 asm("x4") = a4;
+	register u64 x5 asm("x5") = a5;
+	asm volatile("svc #0" : "+r"(x0)
+			: "r"(x1),"r"(x2),"r"(x3),"r"(x4),"r"(x5),"r"(x8)
+			: "memory","cc");
+	return x0; // return value
+}
+void syscall(syscall_t call, ...)
+{
+	va_list va;
+	u64 wait_until;
+
+	va_start(va, call);
+	switch (call) {
+	case SYSCALL_WAIT_UNTIL:
+		wait_until = va_arg(va, u64);
+		uart_puts("invoke syscall WAIT_UNTIL(");
+		uart_putu64(wait_until);
+		uart_puts(")\n");
+		invoke_syscall(SYSCALL_WAIT_UNTIL, wait_until, 0, 0, 0, 0, 0);
+		break;
+	default:
+		break;
+	}
 }

@@ -27,22 +27,23 @@ sched_t G_SCHED;
 alloc_t G_ALLOC;
 ctx_t *G_KERNEL_CTX;
 
-void periodic_func(ctx_t *);
+void ipc_sched(ctx_t *);
+void timer_fn(ctx_t *);
+//static void trampoline(ctx_t *c)
+//{
+//	timer_irq_handler(c);
+//}
 
-static void trampoline(ctx_t *c)
+void timer_ppi_init(void)
 {
-	timer_irq_handler(c);
-}
-
-void timer_init(void)
-{
-	irq_register_ppi(EL1_PHYS_TIMER_PPI, trampoline);
-	set_timer_func(periodic_func);
-	start_periodic_task_freq(1);
+	timebase_init();
+	irq_register_ppi(EL1_PHYS_TIMER_PPI, timer_fn);
+	gic_enable_ppi(EL1_PHYS_TIMER_PPI, 0x80, /*group1ns=*/1);
+	asm volatile("msr DAIFClr, #2\n\tisb" ::: "memory");
 }
 void sched_spi_init(void)
 {
-	irq_register_spi(SCHED_SPI, periodic_func);
+	irq_register_spi(SCHED_SPI, ipc_sched);
 	sys_enable_icc_el1();
 	gic_enable_dist();
 	gic_enable_spi(SCHED_SPI);
@@ -117,7 +118,7 @@ void jrt_main(void)
 	// initialize periodix timer
 	//timer_init();
 	sched_spi_init();
-
+	timer_ppi_init();
 	jrt_loop();
 
 	uart_puts("a number: ");
@@ -178,12 +179,12 @@ void schedule_req(u64 pc, u64 prog_size, u64 mem_req)
 	uart_putu64(mem_req);
 	uart_puts(")\n");
 
-	sched_sched_proc(&G_SCHED, pid);
+	sched_ready_proc(&G_SCHED, pid);
 	sched(&G_SCHED, sched_switch_irq);
 }
 
 static struct mpsc_ring *g_ipc_ring = (void*)TOJRT_RING_ADDR;
-void periodic_func(ctx_t *ctx)
+void ipc_sched(ctx_t *ctx)
 {
 	jrt_sched_req_t sr;
 	int budget;
@@ -196,3 +197,30 @@ void periodic_func(ctx_t *ctx)
 	//uart_puts("periodic call\n");
 }
 
+void timer_fn(ctx_t *)
+{
+	proc_t *p;
+	u64 dl;
+	u64 now;
+
+	if (!sched_has_waiting(&G_SCHED))
+		return;
+	do {
+		heap_pop(&G_SCHED.waiting, &dl, (void**)&p);
+		now = time_now_ticks();
+
+		if (dl > now) {
+			heap_push(&G_SCHED.waiting, dl, p);
+			goto end;
+		}
+		uart_puts("timer dl: ");
+		uart_putu64(us_from_ticks(dl));
+		uart_puts("\n");
+		sched_ready_proc(&G_SCHED, p->pid);
+		sched(&G_SCHED, sched_switch_irq);
+	} while (sched_has_waiting(&G_SCHED));
+	return;
+end:
+	timer_schedule_at_ticks(dl);
+
+}

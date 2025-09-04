@@ -126,7 +126,15 @@ static inline void sched_init(sched_t *s)
 
 proc_t *sched_get_proc(sched_t *sc, u32 pid);
 proc_t *shed_alloc_proc(sched_t *sc);
-void sched_sched_proc(sched_t *sc, u32 pid);
+void sched_ready_proc(sched_t *sc, u32 pid);
+
+void sched_wait_proc(sched_t *sc, u32 pid);
+static inline bool sched_has_waiting(sched_t *sc)
+{
+	return sc->waiting.len > 0;
+}
+u64 sched_next_wait_deadline(sched_t *sc);
+
 
 typedef void (*exit_func_t)(void);
 u32 sched_new_proc(
@@ -147,6 +155,8 @@ extern u64 load_pstate(ctx_t *ctx);
 
 // ctx_switch.S
 void update_current_ctx(void);
+
+proc_t *sched_yield(sched_t *sc);
 void sched(sched_t *sc, void (*swp)(sched_t*,proc_t*,proc_t*));
 void sched_switch_sync(sched_t *sc, proc_t *c, proc_t *n);
 void sched_switch_irq(sched_t *sc, proc_t *c, proc_t *n);

@@ -4,7 +4,7 @@
 #include "string.h"
 #include "kerror.h"
 #include "uart.h"
-
+#include "timer.h"
 proc_t *sched_alloc_proc(sched_t *sc)
 {
 	proc_t *r;
@@ -96,7 +96,7 @@ u32 sched_new_proc(
 	return p->pid;
 }
 
-void sched_sched_proc(sched_t *sc, u32 pid)
+void sched_ready_proc(sched_t *sc, u32 pid)
 {
 	proc_t *p;
 
@@ -104,6 +104,26 @@ void sched_sched_proc(sched_t *sc, u32 pid)
 
 	if (heap_push(&sc->ready, p->eff_deadline, p))
 		KERNEL_PANIC(JRT_ENOMEM);
+}
+
+void sched_wait_proc(sched_t *sc, u32 pid)
+{
+	proc_t *p;
+
+	p = sched_get_proc(sc, pid);
+
+	if (heap_push(&sc->waiting, p->wait_until, p))
+		KERNEL_PANIC(JRT_ENOMEM);
+}
+u64 sched_next_wait_deadline(sched_t *sc)
+{
+	proc_t *p;
+	u64 wait_until;
+	if (sched_has_waiting(sc))
+		heap_peek(&sc->waiting, &wait_until, (void**)&p);
+	else
+		wait_until = 0;
+	return wait_until;
 }
 
 void uart_dump_ctx(ctx_t *c)
@@ -148,11 +168,23 @@ void sched_switch_sync(sched_t *sc, proc_t *c, proc_t *n)
 	mmu_map_switch(&n->ctx.mmap);
 	load_pstate(&n->ctx);
 }
-
 void sched_switch_irq(sched_t *sc, proc_t *c, proc_t *n)
 {
 	sc->pid = n->pid;
 	sc->curr = n;
+	uart_putu32(c->pid);
+	uart_puts(", pc: (");
+	uart_puthex(c->ctx.pc);
+	uart_puts(", PA: ");
+	uart_puthex(c->pa_pc);
+	uart_puts(") -> (pid: ");
+	uart_putu32(n->pid);
+	uart_puts(", pc: (");
+	uart_puthex(n->ctx.pc);
+	uart_puts(", PA: ");
+	uart_puthex(n->pa_pc);
+	uart_puts(")\n");
+	/*
 	uart_puts("irq switch FROM:\n");
 	uart_dump_ctx(&c->ctx);
 	uart_puts("TO:\n");
@@ -161,7 +193,24 @@ void sched_switch_irq(sched_t *sc, proc_t *c, proc_t *n)
 	uart_puthex(n->pa_pc);
 	uart_puts("\nPC [0x0,0x50]: \n");
 	dump_mem((void*)(uintptr_t)n->pa_pc, 0x50);
+	*/
 
+}
+proc_t *sched_yield(sched_t *sc)
+{
+	proc_t *p, *c;
+	u64 deadline;
+
+	heap_pop(&sc->ready, &deadline, (void**)&p);
+	if (!p)
+		p = &sc->p0;
+	p->state = PROC_RUNNING;
+	c = sc->pid == 0 ? &sc->p0 : sched_get_proc(sc, sc->pid);
+	uart_puts("[");
+	uart_putu64(time_now_us());
+	uart_puts("][SCHED] yield (pid: ");
+	sched_switch_irq(sc, c, p);
+	return c;
 }
 
 void sched(sched_t *sc, void (*swp)(sched_t*,proc_t*,proc_t*))
@@ -170,9 +219,11 @@ void sched(sched_t *sc, void (*swp)(sched_t*,proc_t*,proc_t*))
 	u64 deadline;
 
 	heap_peek(&sc->ready, &deadline, (void**)&p);
-	if (!p)
-		return;
+	if (!p) {
+		if (sc->curr == NULL)
 
+		return;
+	}
 	c = sc->pid == 0 ? &sc->p0 : sched_get_proc(sc, sc->pid);
 
 	if (sc->pid == 0 || c->eff_deadline > deadline) {
@@ -181,7 +232,11 @@ void sched(sched_t *sc, void (*swp)(sched_t*,proc_t*,proc_t*))
 		p->state = PROC_RUNNING;
 		c->state = PROC_READY;
 		if (sc->pid != 0)
-			sched_sched_proc(sc, c->pid);
+			sched_ready_proc(sc, c->pid);
+		uart_puts("[");
+		uart_putu64(time_now_us());
+		uart_puts("][SCHED] switch (pid: ");
+
 		swp(sc, c, p);
 	}
 }

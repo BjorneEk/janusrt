@@ -3,12 +3,13 @@
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
 #include "uart.h"
+#include "stdarg.h"
 
 typedef enum syscall {
-	SYSCALL_EXIT,
-	SYSCALL_YIELD,
 	SYSCALL_WAIT_UNTIL
 } syscall_t;
 
-void syscall(u16 imm);
+
+void take_syscall(u16 imm);
+void syscall(syscall_t call, ...);
 #endif
