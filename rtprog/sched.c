@@ -90,6 +90,8 @@ u32 sched_new_proc(
 	p->first = 1;
 	p->mem = mem;
 	p->mem_size = mem_size;
+	p->prog_size = code_size;
+	//p->code_size = code_size;
 	p->eff_deadline = deadline;
 	p->abs_deadline = deadline;
 	p->state = PROC_READY;
@@ -105,7 +107,9 @@ void sched_ready_proc(sched_t *sc, u32 pid)
 	proc_t *p;
 
 	p = sched_get_proc(sc, pid);
-
+	uart_puts("READY_PROC(");
+	uart_putu32(pid);
+	uart_puts(")\n");
 	if (heap_push(&sc->ready, p->eff_deadline, p))
 		KERNEL_PANIC(JRT_ENOMEM);
 }
@@ -115,6 +119,9 @@ void sched_wait_proc(sched_t *sc, u32 pid)
 	proc_t *p;
 
 	p = sched_get_proc(sc, pid);
+	uart_puts("WAIT_PROC(");
+	uart_putu32(pid);
+	uart_puts(")\n");
 
 	if (heap_push(&sc->waiting, p->wait_until, p))
 		KERNEL_PANIC(JRT_ENOMEM);
@@ -228,14 +235,14 @@ void sched(sched_t *sc, void (*swp)(sched_t*,proc_t*,proc_t*))
 
 		return;
 	}
-	c = sc->pid == 0 ? &sc->p0 : sched_get_proc(sc, sc->pid);
+	c = sc->curr->pid == 0 ? &sc->p0 : sched_get_proc(sc, sc->pid);
 
-	if (sc->pid == 0 || c->eff_deadline > deadline) {
+	if (sc->curr->pid == 0 || c->eff_deadline > deadline) {
 		// should perform context switch
 		heap_pop(&sc->ready, &deadline, (void**)&p);
 		p->state = PROC_RUNNING;
 		c->state = PROC_READY;
-		if (sc->pid != 0)
+		if (sc->curr->pid != 0)
 			sched_ready_proc(sc, c->pid);
 		uart_puts("[");
 		uart_putu64(time_now_us());

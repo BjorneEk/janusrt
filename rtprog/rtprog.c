@@ -211,10 +211,13 @@ void timer_fn(ctx_t *)
 	}
 	do {
 		heap_pop(&G_SCHED.waiting, &dl, (void**)&p);
+		if (!p)
+			return;
 		now = time_now_ticks();
 
 		if (dl > now) {
-			heap_push(&G_SCHED.waiting, dl, p);
+			sched_wait_proc(&G_SCHED, p->pid);
+			//heap_push(&G_SCHED.waiting, dl, p);
 			goto end;
 		}
 		uart_puts("timer dl: ");

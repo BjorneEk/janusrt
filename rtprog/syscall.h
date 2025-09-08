@@ -7,7 +7,8 @@
 
 typedef enum syscall {
 	SYSCALL_WAIT_UNTIL,
-	SYSCALL_EXIT
+	SYSCALL_EXIT,
+	SYSCALL_SPAWN
 } syscall_t;
 
 

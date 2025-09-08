@@ -3,8 +3,10 @@
 #include "syscall.h"
 #include "sched.h"
 #include "timer.h"
+#include "cpu.h"
 
 extern sched_t G_SCHED;
+extern alloc_t G_ALLOC;
 
 static void wait_until(u64 until)
 {
@@ -14,11 +16,15 @@ static void wait_until(u64 until)
 	p = sched_yield(&G_SCHED);
 	p->wait_until = until;
 	p->state = PROC_WAITING;
+
 	sched_timer = !sched_has_waiting(&G_SCHED);
 	sched_wait_proc(&G_SCHED, p->pid);
 	if (sched_timer)
 		timer_schedule_at_ticks(until);
+
 }
+
+extern void jrt_exit(void);
 
 static void exit()
 {
@@ -27,6 +33,31 @@ static void exit()
 	p = sched_yield(&G_SCHED);
 
 	sched_free_proc(&G_SCHED, p->pid);
+}
+
+static void spawn(u64 deadline, u64 ep, u64 ap, u64 mem_req)
+{
+	proc_t *p;
+	u32 pid;
+	void *mem;
+
+	//interrupts_disable_all();
+	mem = alloc(&G_ALLOC, mem_req);
+
+	pid = sched_new_proc(
+		&G_SCHED,
+		G_SCHED.curr->pa_pc,
+		G_SCHED.curr->prog_size,
+		mem,
+		mem_req,
+		deadline,
+		jrt_exit);
+	p = sched_get_proc(&G_SCHED, pid);
+	p->ctx.pc = ep;
+	p->ctx.x[2] = ap;
+
+	sched_ready_proc(&G_SCHED, pid);
+	sched(&G_SCHED, sched_switch_irq);
 }
 
 void take_syscall(u16 imm __attribute__((unused)))
@@ -41,10 +72,26 @@ void take_syscall(u16 imm __attribute__((unused)))
 		uart_putu64(time_now_ticks());
 		uart_puts(")\n");
 		wait_until(G_SCHED.curr->ctx.x[0]);
-		return;
+		break;
 	case SYSCALL_EXIT:
 		uart_puts("take syscall EXIT\n");
 		exit();
+		break;
+	case SYSCALL_SPAWN:
+		uart_puts("take syscall SPAWN(");
+		uart_putu64(G_SCHED.curr->pid);
+		uart_puts(", deadline: ");
+		uart_putu64(G_SCHED.curr->ctx.x[0]);
+		uart_puts(") (entry:");
+		uart_puthex(G_SCHED.curr->ctx.x[1]);
+		uart_puts(")\n");
+
+		spawn(
+			G_SCHED.curr->ctx.x[0],
+			G_SCHED.curr->ctx.x[1],
+			G_SCHED.curr->ctx.x[2],
+			G_SCHED.curr->ctx.x[3]);
+		break;
 	}
 }
 static inline u64 invoke_syscall(u64 nr, u64 a0,u64 a1,u64 a2,u64 a3,u64 a4,u64 a5)
@@ -77,6 +124,15 @@ void syscall(syscall_t call, ...)
 		break;
 	case SYSCALL_EXIT:
 		invoke_syscall(SYSCALL_EXIT, 0, 0, 0, 0, 0, 0);
+		break;
+	case SYSCALL_SPAWN:
+		invoke_syscall(
+			SYSCALL_SPAWN,
+			va_arg(va, u64),
+			va_arg(va, u64),
+			va_arg(va, u64),
+			va_arg(va, u64),
+			0, 0);
 		break;
 	default:
 		break;
