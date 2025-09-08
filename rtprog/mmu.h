@@ -3,6 +3,7 @@
 #ifndef _MMU_H_
 #define _MMU_H_
 #include "memory_layout.h"
+#include "mmu_structs.h"
 #include "types.h"
 #include "alloc.h"
 #include "uart.h"
@@ -84,10 +85,7 @@ u64 make_mair_el1(void);
 u64 make_tcr_el1(unsigned va_bits, unsigned pa_bits, bool enable_ttbr1);
 
 // ==== Page-table root & API ====
-typedef struct {
-	u64 *l0;     // root (must be 4 KiB aligned)
-	u64  l0_pa;  // physical (early: VA==PA)
-} pt_root_t;
+
 
 pt_root_t pt_root_new(void);  // alloc & zero L0
 void      map_page(pt_root_t r, u64 va, u64 pa, u64 attrs);
@@ -104,11 +102,6 @@ void tlbi_all(void);
 void tlbi_asid(u16 asid);
 
 // ==== Process map handle & switch ====
-typedef struct {
-	pt_root_t root;
-	u16  asid;
-} mmu_map_t;
-
 mmu_map_t proc_map_create(u64 proc_base_pa, u64 image_len, u16 asid);
 mmu_map_t kern_map_create(u16 asid);
 void mmu_map_switch(const mmu_map_t *pm);

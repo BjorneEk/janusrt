@@ -3,7 +3,7 @@
 // Author: Gustaf Franzen <gustaffranzen@icloud.com>
 .text
 	.align  7
-	#include "structs.h"
+	#include "autogen/structs.h"
 	.equ KERNEL_SP,		(SCHED_P0 + PROC_CTX + CTX_SP)
 	.equ KERNEL_MMAP,	(SCHED_P0 + PROC_CTX + CTX_MMAP)
 

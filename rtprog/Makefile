@@ -11,6 +11,17 @@ OBJCOPY := $(NONE_CROSS)objcopy
 #ROOTFS_DIR ?= ../rootfs
 #SHARED_DIR ?= ../shared
 
+GEN_CC := gcc
+GEN_CFLAGS := -DAUTOGEN_HEADER $(COMMON_CFLAGS) -I$(SHARED_DIR)
+
+HEADERS := structs.h
+AUTOGEN_DIR := autogen
+AUTOGEN := $(addprefix $(AUTOGEN_DIR)/, $(HEADERS))
+AUTOGEN_PROGS := $(patsubst %.h,%_autogen,$(HEADERS))
+AUTOGEN_C := $(patsubst %.h,%_autogen.c,$(HEADERS))
+
+
+
 SRC := rtprog.c boot.S psci.S timer_aarch64.S \
 	irq.c timer.c uart.c sync.c alloc.c kerror.c \
 	sched.c heap.c ctx_switch.S mmu.c mmu_el1.S irq_el1.S \
@@ -59,15 +70,27 @@ JRT_CODE_HEX:=$(shell printf "0x%x" $(JRT_CODE_PHYS))
 
 .PHONY: clean debug
 
-all: debug $(RT_BIN) app
+all: debug $(RT_BIN) app $(AUTOGEN)
 
 $(LIBC):
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-%.o: %.c
+$(AUTOGEN_DIR):
+	@mkdir -p $@
+
+$(AUTOGEN_DIR)/%: % | $(AUTOGEN_DIR)
+#	$(CC) -DAUTOGEN_HEADER $(CFLAGS) -E $< -o $(basename $*)_autogen.c
+	@cp $< $(basename $*)_autogen.c
+	$(GEN_CC) $(GEN_CFLAGS) $(basename $*)_autogen.c -o $(basename $*)_autogen
+	@./$(basename $*)_autogen > $@
+	$(RM) $(basename $*)_autogen
+	$(RM) $(basename $*)_autogen.c
+
+
+%.o: %.c $(AUTOGEN)
 	$(CC) -c $(CFLAGS) $< -o $@
 
-%.o: %.S
+%.o: %.S $(AUTOGEN)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(GEN_LD): $(LDS)
@@ -76,7 +99,7 @@ $(GEN_LD): $(LDS)
 #$(ELF): $(OBJ) $(GEN_LD)
 #	$(LD) $(LDFLAGS) -T $(GEN_LD) $(OBJ) -o $@
 
-$(ELF): $(OBJ) $(GEN_LD) $(LIBC)
+$(ELF): $(OBJ) $(GEN_LD) $(LIBC) $(AUTOGEN)
 	$(LD) $(CFLAGS) $(OBJ) $(LDFLAGS) -o $@
 	#$(LD) -r -o $@ $<
 
@@ -96,6 +119,9 @@ debug:
 	@echo "CFLAGS	$(CFLAGS)"
 
 clean:
+	$(RM) -rf $(AUTOGEN_DIR)
+	$(RM) $(AUTOGEN_PROGS)
+	$(RM) $(AUTOGEN_C)
 	$(MAKE) -C $(LIBC_DIR) clean
 	$(MAKE) -C $(APP_DIR) clean
 	$(RM) $(GEN_LD)

@@ -14,7 +14,7 @@
 	.align  2
 	.global store_pstate
 	.type   store_pstate, %function
-
+//	#include "autogen/structs.h"
 // Offsets into ctx_t (see notes above)
 	.equ X_OFF,        0x000
 	.equ SP_OFF,       0x0F8
@@ -152,7 +152,7 @@ load_pstate:
 
 .text
 	.align  7
-	#include "structs.h"
+	#include "autogen/structs.h"
 	.global update_current_ctx
 	.type   update_current_ctx, %function
 update_current_ctx:
