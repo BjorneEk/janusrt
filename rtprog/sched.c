@@ -159,13 +159,55 @@ void uart_dump_ctx(ctx_t *c)
 		uart_puts(", ");
 	}
 	uart_puts("\n");
-	uart_puts("asid: ");
-	uart_putu32(c->mmap.asid);
-	uart_puts("\n");
+	//dump_map(&c->mmap);
+}
+void dump_proc(proc_t *p, int v)
+{
+	if (v < 1)
+		return;
+	uart_puts("pid: ");
+	uart_putu32(p->pid);
+	uart_puts(", pc: ");
+	uart_puthex(p->pa_pc);
 
-	dump_map(&c->mmap);
+	if (v < 2)
+		return;
+	uart_puts(", dl: ");
+	uart_putu64(p->abs_deadline);
+	uart_puts(", wait_until: ");
+	uart_putu64(p->wait_until);
+	if (v < 3)
+		return;
+	uart_puts(", CTX: \n");
+	uart_dump_ctx(&p->ctx);
+	if (v < 4)
+		return;
+	uart_puts("asid: ");
+	uart_putu32(p->ctx.mmap.asid);
+	uart_puts("\n");
+	dump_map(&p->ctx.mmap);
+}
+static void prf(bool last, u64 k, void *v, void *a)
+{
+	proc_t *p = v;
+	int verb = *(int*)a;
+	dump_proc(p, verb);
+	if (!last)
+	uart_puts("}, {");
 }
 
+
+void dump_sched(sched_t *s, int v)
+{
+
+	uart_puts("waiting:\n {");
+	heap_iter(&s->waiting, &v, prf);
+	uart_puts("}\nready:\n {");
+	heap_iter(&s->ready, &v, prf);
+	uart_puts("}\n");
+
+
+}
 void sched_switch_sync(sched_t *sc, proc_t *c, proc_t *n)
 {
 	sc->pid = n->pid;

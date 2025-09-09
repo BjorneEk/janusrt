@@ -99,6 +99,9 @@ void sched_free_proc(sched_t *sc, u32 pid);
 extern void store_pstate(ctx_t *ctx);
 extern u64 load_pstate(ctx_t *ctx);
 
+void dump_proc(proc_t *p, int v);
+
+void dump_sched(sched_t *s, int v);
 // ctx_switch.S
 void update_current_ctx(void);
 

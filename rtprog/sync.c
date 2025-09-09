@@ -194,12 +194,14 @@ void sync_exception_entry(u64 esr, u64 elr, u64 far)
 	il = ESR_IL(esr);
 	iss =  esr & 0x01ffffff;
 
-	uart_puts("[SYNC] ESR=0x"); print_hex64(esr);
-	uart_puts(" ELR=0x"); print_hex64(elr);
-	uart_puts(" FAR=0x"); print_hex64(far);
-	uart_puts("\n");
+	if ((u32)ec != 0x15) {
+		uart_puts("[SYNC] ESR=0x"); print_hex64(esr);
+		uart_puts(" ELR=0x"); print_hex64(elr);
+		uart_puts(" FAR=0x"); print_hex64(far);
+		uart_puts("\n");
 
-	print_ec_line(ec, il);
+		print_ec_line(ec, il);
+	}
 
 	switch ((u32)ec) {
 	case 0x15:
