@@ -23,4 +23,5 @@ void *realloc(alloc_t *a, void *p, size_t len);
 
 void *aligned_alloc(alloc_t *a, size_t len, u64 align);
 
+void dump_alloc(alloc_t *a);
 #endif

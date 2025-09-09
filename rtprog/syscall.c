@@ -42,9 +42,13 @@ static void exit()
 {
 	proc_t *p;
 
+	uart_puts("before free\n");
+	dump_alloc(&G_ALLOC);
 	p = sched_yield(&G_SCHED);
 
 	sched_free_proc(&G_SCHED, p->pid);
+	uart_puts("after free\n");
+	dump_alloc(&G_ALLOC);
 }
 static void spawn(u64 deadline, u64 ep, u64 ap, u64 mem_req)
 {

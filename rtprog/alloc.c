@@ -61,6 +61,25 @@ static ablock_t *prev(ablock_t *b)
 }
 
 
+void dump_alloc(alloc_t *a)
+{
+	ablock_t *b;
+	b = a->free;
+	while (b <  a->end) {
+		if (b->used) {
+			uart_puts("USED: ");
+		} else {
+			uart_puts("FREE: ");
+		}
+		uart_puthex((uintptr_t)b);
+		uart_puts(" (");
+		uart_puthex((uintptr_t)BLOCK_PTR(b));
+		uart_puts(" ) -> ");
+		b = next(b);
+		uart_puthex((uintptr_t)b);
+		uart_puts("\n");
+	}
+}
 static void split(alloc_t *a, ablock_t *b, u32 size)
 {
 	ablock_t *s, *n;
@@ -192,6 +211,8 @@ void free(alloc_t *a, void *ptr)
 	//uart_puts("\n\nused: ");
 	//uart_putu32(b->used);
 	//uart_puts("\n\n");
+	if (b->used != 1)
+		printf("b->used != 0: %p\n", ptr);
 	KASSERT(b->used == 1);
 
 	b->prev_free = 0;
