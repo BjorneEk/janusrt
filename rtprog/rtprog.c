@@ -209,9 +209,7 @@ void timer_fn(ctx_t *)
 	proc_t *p;
 	u64 dl;
 	u64 now;
-	uart_puts("TIMER (");
-	uart_putu64(time_now_ticks());
-	uart_puts(")\n");
+	printf("TIMER[%llu]\n", time_now_ticks());
 	dump_sched(&G_SCHED, G_VERB);
 
 	if (!sched_has_waiting(&G_SCHED)) {

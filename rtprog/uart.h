@@ -19,6 +19,8 @@
 #define UART_FR_TXFF    (1u << 5)  /* TX FIFO full */
 #define UART_FR_RXFE    (1u << 4)  /* RX FIFO empty */
 
+#define PRINTF_MAX (4096)
+
 /* Minimal safe init (8N1, FIFO on, TX/RX enable) */
 static inline void uart_init(void)
 {
@@ -45,4 +47,5 @@ void uart_putu32(uint32_t v);
 void uart_putu64(uint64_t v);
 
 void uart_puthex(uint64_t v);
+int printf(const char *fmt, ...);
 #endif

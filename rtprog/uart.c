@@ -1,6 +1,21 @@
 
 // Author Gustaf Franzen <gustaffranzen@icloud.com>
 #include "uart.h"
+#include "arg.h"
+#include "string.h"
+
+int printf(const char *fmt, ...)
+{
+	char s[PRINTF_MAX];
+	va_list ap;
+	int r;
+	va_start(ap, fmt);
+	r = vsnprintf(s, PRINTF_MAX, fmt, ap);
+	uart_puts(s);
+	va_end(ap);
+	return r;
+}
+
 __attribute__((used)) void uart_putc(char c)
 {
 	volatile u32 *fr;
