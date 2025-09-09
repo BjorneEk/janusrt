@@ -20,4 +20,6 @@ void heap_pop(minheap_t *h, u64 *key, void **data);
 void heap_peek(minheap_t *h, u64 *key, void **data);
 int heap_push(minheap_t *h, u64 key, void *data);
 
+// invokes iterf(last, key, val, arg); for each element,
+void heap_iter(minheap_t *h, void *arg, void (*iterf)(bool,u64,void*,void*));
 #endif

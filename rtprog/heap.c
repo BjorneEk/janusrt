@@ -58,6 +58,14 @@ static inline void sift_down(minheap_t *h, size_t i)
 	}
 }
 
+// invokes iterf(last, key, val, arg); for each element,
+void heap_iter(minheap_t *h, void *arg, void (*iterf)(bool,u64,void*,void*))
+{
+	size_t i;
+
+	for (i = 0; i < h->len; ++i)
+		iterf(i == h->len - 1, h->a[i].key, h->a[i].val);
+}
 // Insert node with preset key/val; returns 0 on success, -1 if full.
 int heap_push(minheap_t *h, u64 key, void *data)
 {
