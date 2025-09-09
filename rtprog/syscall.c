@@ -4,24 +4,36 @@
 #include "sched.h"
 #include "timer.h"
 #include "cpu.h"
-
+#include "heap.h"
 extern sched_t G_SCHED;
 extern alloc_t G_ALLOC;
 
+extern int G_VERB;
+
 static void wait_until(u64 until)
 {
-	proc_t *p;
-	bool sched_timer;
+	proc_t *p, *w;
+	u64 dl;
+	//bool sched_timer;
+
+	uart_puts("WAIT\n");
+	dump_sched(&G_SCHED, G_VERB);
 
 	p = sched_yield(&G_SCHED);
 	p->wait_until = until;
 	p->state = PROC_WAITING;
 
-	sched_timer = !sched_has_waiting(&G_SCHED);
-	sched_wait_proc(&G_SCHED, p->pid);
-	if (sched_timer)
-		timer_schedule_at_ticks(until);
+	heap_peek(&G_SCHED.waiting, &dl, (void**)&w);
 
+	//sched_timer = !sched_has_waiting(&G_SCHED);
+	sched_wait_proc(&G_SCHED, p->pid);
+	if (w == NULL || dl > until) {
+		if (w)
+			timer_cancel();
+		timer_schedule_at_ticks(until);
+	}
+	uart_puts("WAIT after\n");
+	dump_sched(&G_SCHED, G_VERB);
 }
 
 extern void jrt_exit(void);
@@ -34,12 +46,13 @@ static void exit()
 
 	sched_free_proc(&G_SCHED, p->pid);
 }
-
 static void spawn(u64 deadline, u64 ep, u64 ap, u64 mem_req)
 {
 	proc_t *p;
 	u32 pid;
 	void *mem;
+	uart_puts("SPAWN \n");
+	dump_sched(&G_SCHED, G_VERB);
 
 	//interrupts_disable_all();
 	mem = alloc(&G_ALLOC, mem_req);
@@ -58,6 +71,9 @@ static void spawn(u64 deadline, u64 ep, u64 ap, u64 mem_req)
 
 	sched_ready_proc(&G_SCHED, pid);
 	sched(&G_SCHED, sched_switch_irq);
+
+	uart_puts("SPAWN after \n");
+	dump_sched(&G_SCHED, G_VERB);
 }
 
 void take_syscall(u16 imm __attribute__((unused)))

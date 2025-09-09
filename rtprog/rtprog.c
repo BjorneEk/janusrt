@@ -28,6 +28,8 @@ sched_t G_SCHED;
 alloc_t G_ALLOC;
 ctx_t *G_KERNEL_CTX;
 
+int G_VERB = 2;
+
 void ipc_sched(ctx_t *);
 void timer_fn(ctx_t *);
 //static void trampoline(ctx_t *c)
@@ -151,7 +153,6 @@ void jrt_exit(void)
 {
 	syscall(SYSCALL_EXIT);
 }
-
 void schedule_req(u64 pc, u64 prog_size, u64 mem_req)
 {
 	u32 pid;
@@ -159,6 +160,8 @@ void schedule_req(u64 pc, u64 prog_size, u64 mem_req)
 
 	//interrupts_disable_all();
 	mem = alloc(&G_ALLOC, mem_req);
+	uart_puts("SCHED\n");
+	dump_sched(&G_SCHED, G_VERB);
 
 	if (!mem)
 		KERNEL_PANIC(JRT_ENOMEM);
@@ -183,6 +186,8 @@ void schedule_req(u64 pc, u64 prog_size, u64 mem_req)
 
 	sched_ready_proc(&G_SCHED, pid);
 	sched(&G_SCHED, sched_switch_irq);
+	uart_puts("SCHED after\n");
+	dump_sched(&G_SCHED, G_VERB);
 }
 
 static struct mpsc_ring *g_ipc_ring = (void*)TOJRT_RING_ADDR;
@@ -204,15 +209,19 @@ void timer_fn(ctx_t *)
 	proc_t *p;
 	u64 dl;
 	u64 now;
+	uart_puts("TIMER (");
+	uart_putu64(time_now_ticks());
+	uart_puts(")\n");
+	dump_sched(&G_SCHED, G_VERB);
 
 	if (!sched_has_waiting(&G_SCHED)) {
 		timer_cancel();
-		return;
+		goto ret;
 	}
 	do {
 		heap_pop(&G_SCHED.waiting, &dl, (void**)&p);
 		if (!p)
-			return;
+			goto ret;
 		now = time_now_ticks();
 
 		if (dl > now) {
@@ -221,14 +230,16 @@ void timer_fn(ctx_t *)
 			goto end;
 		}
 		uart_puts("timer dl: ");
-		uart_putu64(us_from_ticks(dl));
+		uart_putu64(dl);
 		uart_puts("\n");
 		sched_ready_proc(&G_SCHED, p->pid);
 		sched(&G_SCHED, sched_switch_irq);
 	} while (sched_has_waiting(&G_SCHED));
 	timer_cancel();
-	return;
+	goto ret;
 end:
 	timer_schedule_at_ticks(dl);
-
+ret:
+	uart_puts("TIMER after\n");
+	dump_sched(&G_SCHED, G_VERB);
 }
