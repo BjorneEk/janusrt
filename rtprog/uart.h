@@ -4,6 +4,7 @@
 #define _UART_H_
 
 #include "types.h"
+#include "arg.h"
 #define UART_BASE       0x09000000UL
 
 #define UART_DR         (UART_BASE + 0x000)  /* Data register (TX/RX) */
@@ -47,5 +48,7 @@ void uart_putu32(uint32_t v);
 void uart_putu64(uint64_t v);
 
 void uart_puthex(uint64_t v);
+
+int vprintf(const char *fmt, va_list ap);
 int printf(const char *fmt, ...);
 #endif

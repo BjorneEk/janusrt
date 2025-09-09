@@ -4,14 +4,20 @@
 #include "arg.h"
 #include "string.h"
 
-int printf(const char *fmt, ...)
+int vprintf(const char *fmt, va_list ap)
 {
 	char s[PRINTF_MAX];
+	int r;
+	r = vsnprintf(s, PRINTF_MAX, fmt, ap);
+	uart_puts(s);
+	return r;
+}
+int printf(const char *fmt, ...)
+{
 	va_list ap;
 	int r;
 	va_start(ap, fmt);
-	r = vsnprintf(s, PRINTF_MAX, fmt, ap);
-	uart_puts(s);
+	r = vprintf(fmt, ap);
 	va_end(ap);
 	return r;
 }
