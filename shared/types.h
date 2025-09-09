@@ -19,9 +19,10 @@
 	typedef int32_t   s32;
 	typedef int64_t   s64;
 
-	typedef uintptr_t uptr;
-	typedef intptr_t  sptr;
-	typedef unsigned __int128 u128;
+	typedef uintptr_t	uptr;
+	typedef intptr_t	sptr;
+	typedef unsigned	__int128 u128;
+	typedef int64_t		ssize_t;
 #endif
 
 #ifndef SIZE_MAX
