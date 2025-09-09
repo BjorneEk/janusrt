@@ -7,16 +7,18 @@ static inline size_t child (size_t i, size_t k) { return HEAP_D * i + 1 + k; }
 
 static inline void swap_nodes(minheap_t *h, size_t i, size_t j)
 {
-	heap_node_t *ti;
-	heap_node_t *tj;
+	//heap_node_t *ti;
+	//heap_node_t *tj;
+	heap_node_t tmp;
 
-	ti = &h->a[i];
-	tj = &h->a[j];
+	//ti = &h->a[i];
+	//tj = &h->a[j];
 
-	memcpy(&h->a[i], tj, sizeof(heap_node_t));
-	tj->idx = i;
-	memcpy(&h->a[j], ti, sizeof(heap_node_t));
-	ti->idx = j;
+	memcpy(&tmp, &h->a[i], sizeof(heap_node_t));
+	memcpy(&h->a[i], &h->a[j], sizeof(heap_node_t));
+	memcpy(&h->a[j], &tmp, sizeof(heap_node_t));
+	h->a[i].idx = i;
+	h->a[j].idx = j;
 }
 
 static inline void sift_up(minheap_t *h, size_t i)
@@ -64,7 +66,7 @@ void heap_iter(minheap_t *h, void *arg, void (*iterf)(bool,u64,void*,void*))
 	size_t i;
 
 	for (i = 0; i < h->len; ++i)
-		iterf(i == h->len - 1, h->a[i].key, h->a[i].val);
+		iterf(i == h->len - 1, h->a[i].key, h->a[i].val, arg);
 }
 // Insert node with preset key/val; returns 0 on success, -1 if full.
 int heap_push(minheap_t *h, u64 key, void *data)
@@ -82,14 +84,17 @@ int heap_push(minheap_t *h, u64 key, void *data)
 }
 
 // Pop min; returns pointer or NULL if empty.
-static inline heap_node_t *heap_pop_node(minheap_t *h)
+void heap_pop(minheap_t *h, u64 *key, void **data)
 {
 	heap_node_t *min;
 
+	*data = NULL;
 	if (heap_empty(h))
-		return NULL;
+		return;
 
 	min = &h->a[0];
+	*data = min->val;
+	*key = min->key;
 	min->idx = SIZE_MAX;
 
 	if (--h->len) {
@@ -97,7 +102,7 @@ static inline heap_node_t *heap_pop_node(minheap_t *h)
 		h->a[0].idx = 0;
 		sift_down(h, 0);
 	}
-	return min;
+	return;
 }
 void heap_peek(minheap_t *h, u64 *key, void **data)
 {
@@ -107,19 +112,6 @@ void heap_peek(minheap_t *h, u64 *key, void **data)
 	}
 	*data = h->a[0].val;
 	*key = h->a[0].key;
-}
-void heap_pop(minheap_t *h, u64 *key, void **data)
-{
-	heap_node_t *n;
-
-	*data = NULL;
-
-	n = heap_pop_node(h);
-
-	if (n) {
-		*key = n->key;
-		*data = n->val;
-	}
 }
 
 // Peek min without removing

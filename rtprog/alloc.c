@@ -5,6 +5,7 @@
 #include "types.h"
 #include "string.h"
 #include "kerror.h"
+#include "uart.h"
 // simple linear best fit allocator
 
 
@@ -188,6 +189,9 @@ void free(alloc_t *a, void *ptr)
 	KASSERT(ptr < (void*)a->end);
 	KASSERT(ptr > (void*)a->base);
 	b = PTR_BLOCK(ptr);
+	//uart_puts("\n\nused: ");
+	//uart_putu32(b->used);
+	//uart_puts("\n\n");
 	KASSERT(b->used == 1);
 
 	b->prev_free = 0;
